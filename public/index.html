@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Ledger</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#181F1C" />
+<style>
+  :root{
+    --ink:#181F1C;
+    --ink-2:#212B26;
+    --paper:#F7F3E8;
+    --paper-dim:#EAE4D3;
+    --red:#C1432E;
+    --green:#4C7A5E;
+    --muted:#9A9C8E;
+    --muted-dark:#5C6259;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+    user-select:none;
+  }
+  input, textarea{ user-select:text; }
+  .mono{ font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    position:relative;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 8px;
+  }
+  .wordmark{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--paper); opacity:0.9;
+  }
+  .wordmark .dot{ color:var(--red); }
+  .icon-btn{
+    width:40px; height:40px; border-radius:10px;
+    background:var(--ink-2); border:none; color:var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .icon-btn:active{ transform:scale(0.94); }
+
+  /* ---------- Screens ---------- */
+  .screen{ flex:1; display:none; flex-direction:column; padding: 4px 20px 28px; }
+  .screen.active{ display:flex; }
+
+  /* ---------- Home ---------- */
+  .last-entry{
+    margin: 4px 0 18px;
+    background:var(--ink-2);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer;
+    border:1px solid rgba(247,243,232,0.06);
+  }
+  .last-entry .l{ font-size:12px; color:var(--muted); margin-bottom:2px; }
+  .last-entry .v{ font-family:'IBM Plex Mono',monospace; font-size:16px; }
+  .last-entry .chev{ color:var(--muted); font-size:13px; }
+
+  .home-actions{ flex:1; display:flex; flex-direction:column; gap:14px; justify-content:center; }
+  .big-btn{
+    border:none; border-radius:20px; padding:26px 20px;
+    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+    cursor:pointer; text-align:left;
+  }
+  .big-btn:active{ transform:scale(0.985); }
+  .big-btn.manual{ background:var(--paper); color:var(--ink); }
+  .big-btn.photo{ background:var(--ink-2); color:var(--paper); border:1px solid rgba(247,243,232,0.1); }
+  .big-btn .icon{ font-size:26px; }
+  .big-btn .title{ font-size:19px; font-weight:700; }
+  .big-btn .sub{ font-size:13px; opacity:0.65; }
+
+  .recurring-note{
+    text-align:center; font-size:12px; color:var(--muted); margin-top:14px;
+  }
+  .recurring-note button{ background:none;border:none;color:var(--paper); text-decoration:underline; font-size:12px; cursor:pointer; padding:0;}
+
+  /* ---------- Category grid ---------- */
+  .flow-header{ display:flex; align-items:center; gap:10px; margin: 10px 0 20px; }
+  .flow-header h2{ font-size:18px; margin:0; }
+  .back-btn{ background:var(--ink-2); border:none; color:var(--paper); width:36px;height:36px;border-radius:10px; cursor:pointer; font-size:16px;}
+
+  .cat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .cat-tile{
+    background:var(--ink-2); border:1px solid rgba(247,243,232,0.07); border-radius:16px;
+    padding:18px 8px; display:flex; flex-direction:column; align-items:center; gap:8px;
+    cursor:pointer; color:var(--paper);
+  }
+  .cat-tile:active{ transform:scale(0.95); }
+  .cat-tile .emoji{ font-size:26px; }
+  .cat-tile .name{ font-size:12px; color:var(--muted); }
+
+  /* ---------- Numpad ---------- */
+  .amount-display{
+    text-align:center; margin: 18px 0 8px;
+  }
+  .amount-display .cat-tag{ font-size:13px; color:var(--muted); margin-bottom:6px; }
+  .amount-display .num{ font-family:'IBM Plex Mono',monospace; font-size:48px; font-weight:600; letter-spacing:0.01em; }
+  .type-toggle{ display:flex; justify-content:center; gap:8px; margin-bottom: 18px; }
+  .type-toggle button{
+    border:1px solid rgba(247,243,232,0.15); background:transparent; color:var(--muted);
+    padding:6px 14px; border-radius:999px; font-size:12px; cursor:pointer;
+  }
+  .type-toggle button.active.expense{ background:var(--red); color:var(--paper); border-color:var(--red); }
+  .type-toggle button.active.income{ background:var(--green); color:var(--paper); border-color:var(--green); }
+
+  .numpad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:auto; }
+  .numpad button{
+    background:var(--ink-2); border:none; color:var(--paper);
+    font-size:22px; font-family:'IBM Plex Mono',monospace;
+    padding:18px 0; border-radius:14px; cursor:pointer;
+  }
+  .numpad button:active{ background:#2A362F; }
+  .numpad button.wide{ font-size:16px; color:var(--muted); }
+  .save-btn{
+    margin-top:14px; background:var(--paper); color:var(--ink); border:none;
+    padding:16px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer;
+  }
+  .save-btn:disabled{ opacity:0.35; }
+  .save-btn:active{ transform:scale(0.98); }
+
+  /* ---------- Photo flow ---------- */
+  .photo-stage{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; }
+  .photo-stage .big-emoji{ font-size:44px; }
+  .photo-stage p{ color:var(--muted); font-size:14px; max-width:280px; margin:0; }
+  .capture-btn{
+    background:var(--red); color:var(--paper); border:none; padding:16px 28px;
+    border-radius:14px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  #cameraInput{ display:none; }
+  .preview-img{ max-width:100%; max-height:260px; border-radius:12px; object-fit:cover; }
+  .spinner{
+    width:28px;height:28px;border-radius:50%;
+    border:3px solid rgba(247,243,232,0.15); border-top-color:var(--paper);
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .confirm-card{ background:var(--ink-2); border-radius:16px; padding:16px; margin-top:8px; }
+  .confirm-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(247,243,232,0.07); }
+  .confirm-row:last-child{ border-bottom:none; }
+  .confirm-row label{ font-size:12px; color:var(--muted); }
+  .confirm-row input, .confirm-row select{
+    background:transparent; border:none; color:var(--paper); text-align:right; font-size:15px;
+    font-family:'IBM Plex Mono',monospace; width:60%;
+  }
+
+  /* ---------- Overview ---------- */
+  .month-switch{ display:flex; align-items:center; justify-content:space-between; margin: 8px 0 18px; }
+  .month-switch button{ background:var(--ink-2); border:none; color:var(--paper); width:34px;height:34px;border-radius:9px; cursor:pointer; }
+  .month-switch h2{ font-size:16px; margin:0; font-family:'IBM Plex Mono',monospace; }
+
+  .totals-row{ display:flex; gap:10px; margin-bottom:22px; }
+  .total-card{ flex:1; background:var(--ink-2); border-radius:14px; padding:12px; }
+  .total-card .l{ font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .total-card .v{ font-family:'IBM Plex Mono',monospace; font-size:16px; }
+  .total-card.net .v.pos{ color:var(--green); }
+  .total-card.net .v.neg{ color:var(--red); }
+
+  .section-title{ font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin: 18px 0 10px; }
+
+  .cat-bar-row{ margin-bottom:12px; }
+  .cat-bar-row .top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .cat-bar-row .top .budget{ color:var(--muted); font-size:11px; }
+  .cat-bar-track{ height:7px; background:var(--ink-2); border-radius:999px; overflow:hidden; }
+  .cat-bar-fill{ height:100%; background:var(--red); border-radius:999px; }
+  .cat-bar-fill.over{ background:#8a2f20; }
+
+  .timeline-day{ margin-bottom:14px; }
+  .timeline-day .date{ font-size:11px; color:var(--muted); margin-bottom:6px; }
+  .entry-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--ink-2); border-radius:12px; padding:11px 13px; margin-bottom:6px;
+    cursor:pointer;
+  }
+  .entry-row .left{ display:flex; align-items:center; gap:10px; }
+  .entry-row .emoji{ font-size:16px; }
+  .entry-row .meta .cat{ font-size:13px; }
+  .entry-row .meta .note{ font-size:11px; color:var(--muted); }
+  .entry-row .amt{ font-family:'IBM Plex Mono',monospace; font-size:14px; }
+  .entry-row .amt.expense{ color:var(--red); }
+  .entry-row .amt.income{ color:var(--green); }
+  .empty-state{ text-align:center; color:var(--muted); font-size:13px; padding:30px 10px; }
+
+  /* ---------- Receipts ---------- */
+  .receipt-month-group{ margin-bottom:22px; }
+  .receipt-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .receipt-thumb{
+    position:relative; border-radius:8px; overflow:hidden; aspect-ratio:3/4;
+    background:var(--paper); cursor:pointer;
+  }
+  .receipt-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .receipt-thumb .amt-tag{
+    position:absolute; bottom:0; left:0; right:0; background:rgba(24,31,28,0.8);
+    color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:10px; padding:3px 5px; text-align:center;
+  }
+
+  /* ---------- Directory / nav sheet ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.2s; z-index:20;
+  }
+  .sheet-backdrop.open{ opacity:1; pointer-events:auto; }
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto;
+    background:var(--ink-2); border-radius:20px 20px 0 0; padding:10px 20px calc(24px + env(safe-area-inset-bottom));
+    transform:translateY(100%); transition:transform 0.25s ease; z-index:21;
+  }
+  .sheet.open{ transform:translateY(0); }
+  .sheet-handle{ width:36px; height:4px; background:rgba(247,243,232,0.2); border-radius:99px; margin:8px auto 16px; }
+  .sheet-item{
+    display:flex; align-items:center; gap:14px; padding:14px 6px; cursor:pointer; color:var(--paper);
+    border-bottom:1px solid rgba(247,243,232,0.06);
+  }
+  .sheet-item:last-child{ border-bottom:none; }
+  .sheet-item .emoji{ font-size:19px; width:24px; text-align:center; }
+  .sheet-item .label{ font-size:15px; }
+
+  /* ---------- Modal (edit entry / receipt view / settings) ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); opacity:0; pointer-events:none; transition:opacity 0.2s; z-index:30;
+    display:flex; align-items:flex-end;
+  }
+  .modal-backdrop.open{ opacity:1; pointer-events:auto; }
+  .modal{
+    background:var(--ink-2); width:100%; max-width:480px; margin:0 auto;
+    border-radius:20px 20px 0 0; padding:20px 20px calc(24px + env(safe-area-inset-bottom));
+    transform:translateY(30px); transition:transform 0.2s;
+  }
+  .modal-backdrop.open .modal{ transform:translateY(0); }
+  .modal h3{ margin:0 0 14px; font-size:16px; }
+  .modal-actions{ display:flex; gap:10px; margin-top:16px; }
+  .modal-actions button{ flex:1; border:none; border-radius:12px; padding:13px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn-primary{ background:var(--paper); color:var(--ink); }
+  .btn-danger{ background:transparent; color:var(--red); border:1px solid var(--red) !important; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid rgba(247,243,232,0.15) !important; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:11px; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.05em; }
+  .field input, .field select{
+    width:100%; background:var(--ink); border:1px solid rgba(247,243,232,0.1); color:var(--paper);
+    padding:11px 12px; border-radius:10px; font-size:14px; font-family:inherit;
+  }
+  .field input.mono{ font-family:'IBM Plex Mono',monospace; }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--paper); color:var(--ink); padding:11px 18px; border-radius:99px;
+    font-size:13px; font-weight:600; opacity:0; transition:all 0.25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---------- Accounts ---------- */
+  .modal{ max-height:92vh; max-height:92dvh; overflow-y:auto; }
+  .acct-pick{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--ink-2); border-radius:12px; padding:8px 12px; margin:0 0 10px; }
+  .acct-pick label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+  .acct-pick select{ background:transparent; border:none; color:var(--paper); font-size:15px; font-family:inherit; text-align:right; max-width:65%; }
+  .section-row{ display:flex; align-items:center; justify-content:space-between; }
+  .link-btn{ background:none; border:none; color:var(--paper); text-decoration:underline; font-size:12px; cursor:pointer; padding:0; }
+  .acct-strip{ display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; margin-bottom:16px; scrollbar-width:none; }
+  .acct-strip::-webkit-scrollbar{ display:none; }
+  .acct-card{ flex:0 0 auto; min-width:140px; background:var(--ink-2); border:1px solid rgba(247,243,232,0.07); border-radius:14px; padding:12px; cursor:pointer; color:var(--paper); }
+  .acct-card.sel{ border-color:var(--paper); }
+  .acct-card .n{ font-size:12px; color:var(--muted); margin-bottom:4px; white-space:nowrap; }
+  .acct-card .v{ font-family:'IBM Plex Mono',monospace; font-size:17px; }
+  .acct-card .v.neg{ color:var(--red); }
+  .acct-card .s{ font-size:10.5px; color:var(--muted); margin-top:3px; white-space:nowrap; }
+  .entry-row .amt.transfer{ color:var(--muted); }
+  .acct-switch{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--ink-2); border:1px solid rgba(247,243,232,0.07); border-radius:16px; padding:10px; margin:8px 0 14px; }
+  .acct-switch button{ background:var(--ink); border:none; color:var(--paper); width:36px; height:36px; border-radius:10px; cursor:pointer; flex:0 0 auto; }
+  .acct-switch .mid{ text-align:center; min-width:0; }
+  .acct-switch .name{ font-size:15px; font-weight:700; }
+  .acct-switch .bal{ font-size:17px; margin-top:2px; }
+  .acct-switch .bal.neg{ color:var(--red); }
+  .acct-switch .sub{ font-size:11px; color:var(--muted); margin-top:1px; }
+  .hint{ font-size:11px; color:var(--muted); margin:-4px 0 12px; }
+
+  /* ---------- Cloud: sign-in + account ---------- */
+  .login{ position:fixed; inset:0; z-index:40; background:var(--ink); display:none; align-items:center; justify-content:center; padding:24px; }
+  .login.active{ display:flex; }
+  .login-card{ width:100%; max-width:340px; text-align:center; }
+  .login-card .wordmark{ font-size:36px; margin-bottom:10px; justify-content:center; }
+  .login-sub{ color:var(--muted); font-size:14px; margin:0 0 22px; min-height:20px; }
+  #googleBtn{ display:flex; justify-content:center; min-height:44px; }
+  .login-err{ color:var(--red); font-size:13px; margin:14px 0 0; min-height:18px; }
+  .login-fine{ color:var(--muted-dark); font-size:11px; margin-top:26px; line-height:1.5; }
+  .pill-btn{ background:transparent; color:var(--paper); border:1px solid rgba(247,243,232,0.2); border-radius:10px; padding:9px 13px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; }
+  .pill-btn.solid{ background:var(--paper); color:var(--ink); border-color:var(--paper); }
+  .settings-sec{ border-top:1px solid rgba(247,243,232,0.08); margin:14px 0 4px; padding-top:12px; }
+  .settings-sec .k{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+
+  /* ---------- Budget + export ---------- */
+  :root{ --amber:#C9922E; }
+  .total-card .v.good{ color:var(--green); }
+  .total-card .v.bad{ color:var(--red); }
+  .bud-empty{ background:var(--ink-2); border-radius:16px; padding:22px 18px; text-align:center; margin-top:6px; }
+  .bud-empty .big{ font-size:30px; margin-bottom:6px; }
+  .bud-empty h3{ margin:0 0 6px; font-size:16px; }
+  .bud-empty p{ margin:0 0 16px; font-size:13px; color:var(--muted); line-height:1.5; }
+  .bud-btns{ display:flex; gap:10px; flex-direction:column; }
+  .bud-btns button{ border:none; border-radius:12px; padding:13px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .bud-overall{ height:9px; background:var(--ink-2); border-radius:999px; overflow:hidden; margin:-8px 0 8px; }
+  .bud-fill{ height:100%; background:var(--green); border-radius:999px; }
+  .bud-fill.warn{ background:var(--amber); }
+  .bud-fill.over{ background:var(--red); }
+  .bud-overall-note{ font-size:11px; color:var(--muted); margin-bottom:6px; }
+  .bud-row{ margin-bottom:15px; cursor:pointer; }
+  .bud-row .top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .bud-row .top .mono{ font-size:12px; color:var(--muted); }
+  .bud-row .sub{ display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:4px; }
+  .bud-row .left.ok{ color:var(--green); }
+  .bud-row .left.neg{ color:var(--red); }
+  .bud-extra{ font-size:12px; color:var(--muted); margin:2px 0 12px; }
+  .hist-row{ display:flex; align-items:center; justify-content:space-between; background:var(--ink-2); border-radius:12px; padding:10px 13px; margin-bottom:6px; cursor:pointer; font-size:13px; }
+  .hist-row .m{ flex:0 0 52px; }
+  .hist-row .b{ flex:1; text-align:right; color:var(--muted); font-size:12px; }
+  .hist-row .sv{ flex:0 0 96px; text-align:right; font-size:13px; }
+  .hist-row .sv.good{ color:var(--green); }
+  .hist-row .sv.bad{ color:var(--red); }
+  .hist-row.cur{ border:1px solid rgba(247,243,232,0.25); }
+  .plan-total{ display:flex; justify-content:space-between; font-size:13px; padding:10px 2px 2px; border-top:1px solid rgba(247,243,232,0.08); margin-top:6px; }
+  .plan-line{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .plan-line .nm{ flex:1; font-size:14px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .plan-line input{ width:112px; background:var(--ink); border:1px solid rgba(247,243,232,0.1); color:var(--paper); padding:9px 10px; border-radius:10px; font-size:14px; text-align:right; font-family:'IBM Plex Mono',monospace; }
+  .ex-status{ font-size:12px; color:var(--muted); min-height:18px; margin:2px 0 4px; line-height:1.5; word-break:break-word; }
+  .ex-status a{ color:var(--paper); }
+  .ex-status.err{ color:var(--red); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="wordmark">Ledger<span class="dot">.</span></div>
+    <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
+  </div>
+
+  <!-- ============ HOME ============ -->
+  <div class="screen active" id="screen-home">
+    <div id="lastEntryWrap"></div>
+    <div class="home-actions">
+      <button class="big-btn manual" id="goManual">
+        <div class="icon">✎</div>
+        <div class="title">Log manually</div>
+        <div class="sub">Category → amount → done</div>
+      </button>
+      <button class="big-btn photo" id="goPhoto">
+        <div class="icon">📷</div>
+        <div class="title">Snap a receipt</div>
+        <div class="sub">Claude reads it for you</div>
+      </button>
+    </div>
+    <div class="recurring-note">Recurring items auto-log each month · <button id="manageRecurring">manage</button></div>
+  </div>
+
+  <!-- ============ MANUAL: CATEGORY ============ -->
+  <div class="screen" id="screen-category">
+    <div class="flow-header">
+      <button class="back-btn" data-back="screen-home">←</button>
+      <h2>Pick a category</h2>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+    <div style="text-align:center; margin-top:16px;"><button class="link-btn" id="editCats" style="display:none;">Edit custom categories</button></div>
+  </div>
+
+  <!-- ============ MANUAL: NUMPAD ============ -->
+  <div class="screen" id="screen-numpad">
+    <div class="flow-header">
+      <button class="back-btn" data-back="screen-category">←</button>
+      <h2>Amount</h2>
+    </div>
+    <div class="type-toggle">
+      <button class="active expense" data-type="expense" id="typeExpense">Expense</button>
+      <button class="income" data-type="income" id="typeIncome">Income</button>
+    </div>
+    <div class="acct-pick"><label for="numAccount">Account</label><select id="numAccount"></select></div>
+    <div class="amount-display">
+      <div class="cat-tag" id="numCatTag">Food</div>
+      <div class="num mono" id="numDisplay">$0</div>
+    </div>
+    <div class="numpad" id="numpad"></div>
+    <button class="save-btn" id="saveManual" disabled>Save entry</button>
+  </div>
+
+  <!-- ============ PHOTO FLOW ============ -->
+  <div class="screen" id="screen-photo">
+    <div class="flow-header">
+      <button class="back-btn" data-back="screen-home">←</button>
+      <h2>Receipt</h2>
+    </div>
+    <div class="photo-stage" id="photoStage">
+      <div class="big-emoji">🧾</div>
+      <p>Take a clear photo of the receipt. Claude will read the merchant, total, date, and category.</p>
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" />
+      <button class="capture-btn" id="openCamera">Open camera</button>
+    </div>
+  </div>
+
+  <!-- ============ OVERVIEW ============ -->
+  <div class="screen" id="screen-overview">
+    <div class="acct-switch">
+      <button id="prevAcct" aria-label="Previous account">‹</button>
+      <div class="mid">
+        <div class="name" id="acctSwitchName">—</div>
+        <div class="bal mono" id="acctSwitchBal"></div>
+        <div class="sub" id="acctSwitchSub"></div>
+      </div>
+      <button id="nextAcct" aria-label="Next account">›</button>
+    </div>
+    <div style="text-align:center; margin:-8px 0 14px;"><button class="link-btn" id="manageAccounts">Manage accounts</button></div>
+    <div class="month-switch">
+      <button id="prevMonth">‹</button>
+      <h2 id="overviewMonthLabel">—</h2>
+      <button id="nextMonth">›</button>
+    </div>
+    <div class="totals-row">
+      <div class="total-card"><div class="l">In</div><div class="v" id="totalIn">$0</div></div>
+      <div class="total-card"><div class="l">Out</div><div class="v" id="totalOut">$0</div></div>
+      <div class="total-card net"><div class="l">Net</div><div class="v" id="totalNet">$0</div></div>
+    </div>
+    <div class="section-title">By category</div>
+    <div id="categoryBreakdown"></div>
+    <div class="section-title">Timeline</div>
+    <div id="timelineWrap"></div>
+  </div>
+
+  <!-- ============ BUDGET ============ -->
+  <div class="screen" id="screen-budget">
+    <div class="flow-header" style="margin-bottom:12px;">
+      <h2 style="font-size:18px;">Budget</h2>
+    </div>
+    <div class="acct-pick"><label for="budgetScope">Account</label><select id="budgetScope"></select></div>
+    <div class="month-switch">
+      <button id="prevBudgetMonth" aria-label="Previous month">‹</button>
+      <h2 id="budgetMonthLabel">—</h2>
+      <button id="nextBudgetMonth" aria-label="Next month">›</button>
+    </div>
+    <div id="budgetBody"></div>
+  </div>
+
+  <!-- ============ RECEIPTS ============ -->
+  <div class="screen" id="screen-receipts">
+    <div class="flow-header" style="margin-bottom:14px;">
+      <h2 style="font-size:18px;">Receipts</h2>
+    </div>
+    <div id="receiptsWrap"></div>
+  </div>
+
+</div>
+
+<!-- Directory sheet -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-item" data-nav="screen-home"><div class="emoji">🏠</div><div class="label">Home</div></div>
+  <div class="sheet-item" data-nav="screen-overview"><div class="emoji">📊</div><div class="label">Overview</div></div>
+  <div class="sheet-item" data-nav="screen-budget"><div class="emoji">🎯</div><div class="label">Budget</div></div>
+  <div class="sheet-item" data-nav="screen-receipts"><div class="emoji">🧾</div><div class="label">Receipts</div></div>
+  <div class="sheet-item" id="openAccountsMenu"><div class="emoji">🏦</div><div class="label">Accounts</div></div>
+  <div class="sheet-item" id="openExport"><div class="emoji">📤</div><div class="label">Export (PDF / Drive)</div></div>
+  <div class="sheet-item" id="openSettings"><div class="emoji">⚙️</div><div class="label">Settings</div></div>
+</div>
+
+<!-- Generic modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<!-- Sign-in screen (also shown while the app loads) -->
+<div class="login active" id="loginScreen">
+  <div class="login-card">
+    <div class="wordmark">Ledger<span class="dot">.</span></div>
+    <p class="login-sub" id="loginStatus">Loading…</p>
+    <div id="googleBtn"></div>
+    <button class="pill-btn solid" id="loginRetry" style="display:none;">Try again</button>
+    <p class="login-err" id="loginErr"></p>
+    <p class="login-fine">Your expenses and receipt photos are stored privately under your Google account, so they sync across your devices.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+/* ============================================================
+   DATA LAYER — talks to the Ledger server (MongoDB Atlas)
+   Keeps the same function names as the old on-device version
+   (idbGetAll, idbGet, idbPut, idbDelete) so the rest of the app is unchanged.
+   Reads are cached in memory; the cache is refreshed whenever the app comes
+   back to the foreground, so edits from another device show up.
+============================================================ */
+let currentUser = null;
+const cache = {};                     // store name -> Promise<Map(key -> record)>
+const clone = (o)=> JSON.parse(JSON.stringify(o));
+
+async function api(method, path, body){
+  const res = await fetch(path, {
+    method,
+    credentials: "same-origin",
+    headers: body !== undefined ? {"Content-Type":"application/json"} : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if(res.status === 401){
+    showLogin("Your session expired. Please sign in again.");
+    throw new Error("signed-out");
+  }
+  if(!res.ok){
+    let msg = "Something went wrong (" + res.status + ")";
+    try{ const j = await res.json(); if(j && j.error) msg = j.error; }catch(e){}
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function recordKey(store, v){
+  return store === "budgets" ? v.category : store === "settings" ? v.key : v.id;
+}
+// Receipt photos are never kept in the list cache; they load from /api/receipts/:id/image.
+function cacheShape(store, v){
+  if(store === "receipts" && v.imageDataUrl){
+    const rest = Object.assign({}, v);
+    delete rest.imageDataUrl;
+    rest.hasImage = true;
+    return rest;
+  }
+  return v;
+}
+function loadStore(store){
+  if(!cache[store]){
+    cache[store] = api("GET", "/api/data/" + store).then(list=>{
+      list.sort((a,b)=>{ const x = String(recordKey(store,a)), y = String(recordKey(store,b)); return x < y ? -1 : x > y ? 1 : 0; });
+      const m = new Map();
+      list.forEach(r=> m.set(recordKey(store, r), r));
+      return m;
+    }).catch(err=>{ delete cache[store]; throw err; });
+  }
+  return cache[store];
+}
+function resetCache(){ for(const k of Object.keys(cache)) delete cache[k]; }
+
+async function idbGetAll(store){
+  return Array.from((await loadStore(store)).values()).map(clone);
+}
+async function idbGet(store, key){
+  const r = (await loadStore(store)).get(key);
+  return r ? clone(r) : null;
+}
+async function idbPut(store, val){
+  const key = recordKey(store, val);
+  await api("PUT", "/api/data/" + store + "/" + encodeURIComponent(key), val);
+  (await loadStore(store)).set(key, clone(cacheShape(store, val)));
+  return val;
+}
+async function idbDelete(store, key){
+  await api("DELETE", "/api/data/" + store + "/" + encodeURIComponent(key));
+  (await loadStore(store)).delete(key);
+}
+
+// Shrinks a photo before it is uploaded (keeps receipts readable, roughly 150-300 KB each).
+function shrinkDataUrl(dataUrl, maxDim, quality, force){
+  maxDim = maxDim || 1400; quality = quality || 0.68;
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        const out = c.toDataURL("image/jpeg", quality);
+        resolve((force || out.length < dataUrl.length) ? out : dataUrl);
+      }catch(e){ resolve(force ? null : dataUrl); }
+    };
+    img.onerror = ()=> resolve(force ? null : dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+/* ============================================================
+   CATEGORIES
+============================================================ */
+const BASE_CATEGORIES = [
+  {id:"food", name:"Food", emoji:"🍜"},
+  {id:"transport", name:"Transport", emoji:"🚗"},
+  {id:"shopping", name:"Shopping", emoji:"🛍️"},
+  {id:"bills", name:"Bills", emoji:"🧾"},
+  {id:"health", name:"Health", emoji:"💊"},
+  {id:"fun", name:"Entertainment", emoji:"🎬"},
+  {id:"home", name:"Home", emoji:"🏠"},
+  {id:"income", name:"Income", emoji:"💰"},
+  {id:"other", name:"Other", emoji:"✳️"},
+];
+// Custom categories you add in the app are stored on-device (settings store)
+let CUSTOM_CATEGORIES = [];
+let CATEGORIES = BASE_CATEGORIES.slice();
+function rebuildCategories(){
+  const other = BASE_CATEGORIES.find(c=>c.id==="other");
+  CATEGORIES = BASE_CATEGORIES.filter(c=>c.id!=="other").concat(CUSTOM_CATEGORIES, [other]);
+}
+async function loadCategories(){
+  CUSTOM_CATEGORIES = (await getSetting("customCategories")) || [];
+  rebuildCategories();
+}
+async function saveCustomCategories(){
+  await setSetting("customCategories", CUSTOM_CATEGORIES);
+  rebuildCategories();
+  renderCatGrid();
+}
+function catInfo(id){ return CATEGORIES.find(c=>c.id===id) || CATEGORIES[CATEGORIES.length-1]; }
+
+/* ============================================================
+   NAVIGATION
+============================================================ */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=> s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if(id === "screen-overview") renderOverview();
+  if(id === "screen-receipts") renderReceipts();
+  if(id === "screen-budget") renderBudget();
+  if(id === "screen-home") renderLastEntry();
+  closeSheet();
+}
+document.querySelectorAll("[data-back]").forEach(b=>{
+  b.addEventListener("click", ()=> showScreen(b.dataset.back));
+});
+
+/* Directory sheet */
+const sheet = document.getElementById("sheet");
+const sheetBackdrop = document.getElementById("sheetBackdrop");
+function openSheet(){ sheet.classList.add("open"); sheetBackdrop.classList.add("open"); }
+function closeSheet(){ sheet.classList.remove("open"); sheetBackdrop.classList.remove("open"); }
+document.getElementById("menuBtn").addEventListener("click", openSheet);
+sheetBackdrop.addEventListener("click", closeSheet);
+document.querySelectorAll("[data-nav]").forEach(el=>{
+  el.addEventListener("click", ()=> showScreen(el.dataset.nav));
+});
+
+/* Toast */
+let toastTimer;
+function toast(msg, ms){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove("show"), ms || 1800);
+}
+
+/* Generic modal helper */
+const modalBackdrop = document.getElementById("modalBackdrop");
+const modalBody = document.getElementById("modalBody");
+function openModal(html){
+  modalBody.innerHTML = html;
+  modalBackdrop.classList.add("open");
+}
+function closeModal(){ modalBackdrop.classList.remove("open"); }
+modalBackdrop.addEventListener("click", (e)=>{ if(e.target === modalBackdrop) closeModal(); });
+
+/* ============================================================
+   HOME — last entry quick edit
+============================================================ */
+async function renderLastEntry(){
+  const entries = await idbGetAll("entries");
+  entries.sort((a,b)=> b.createdAt - a.createdAt);
+  const wrap = document.getElementById("lastEntryWrap");
+  if(!entries.length){ wrap.innerHTML = ""; return; }
+  const e = entries[0];
+  const c = entryDisplay(e);
+  wrap.innerHTML = `
+    <div class="last-entry" id="lastEntryCard">
+      <div>
+        <div class="l">Last entry — tap to fix</div>
+        <div class="v">${c.emoji} ${c.name} · ${fmtMoney(e.amount)}</div>
+      </div>
+      <div class="chev">edit ›</div>
+    </div>`;
+  document.getElementById("lastEntryCard").addEventListener("click", ()=> openEditEntry(e.id));
+}
+
+/* ============================================================
+   MANUAL LOG FLOW
+============================================================ */
+const catGrid = document.getElementById("catGrid");
+function renderCatGrid(){
+  catGrid.innerHTML = "";
+  const addTile = (emoji, name, onClick)=>{
+    const tile = document.createElement("div");
+    tile.className = "cat-tile";
+    tile.innerHTML = `<div class="emoji">${escapeHtml(emoji)}</div><div class="name">${escapeHtml(name)}</div>`;
+    tile.addEventListener("click", onClick);
+    catGrid.appendChild(tile);
+  };
+  CATEGORIES.filter(c=>c.id!=="income").forEach(c=> addTile(c.emoji, c.name, ()=> startNumpad(c.id)));
+  addTile("🔁", "Recurring", ()=> openRecurringManager());
+  addTile("＋", "New category", ()=> openCategoryForm(null));
+  document.getElementById("editCats").style.display = CUSTOM_CATEGORIES.length ? "" : "none";
+}
+document.getElementById("editCats").addEventListener("click", openCategoryManager);
+
+function firstEmoji(str){
+  str = (str || "").trim();
+  if(!str) return "🏷️";
+  if(window.Intl && Intl.Segmenter){
+    const it = new Intl.Segmenter(undefined, {granularity:"grapheme"}).segment(str)[Symbol.iterator]().next();
+    return it.value ? it.value.segment : "🏷️";
+  }
+  return Array.from(str)[0];
+}
+
+function openCategoryManager(){
+  const rows = CUSTOM_CATEGORIES.map(c=> `<div class="entry-row" data-cat-edit="${c.id}">
+      <div class="left"><div class="emoji">${escapeHtml(c.emoji)}</div><div class="meta"><div class="cat">${escapeHtml(c.name)}</div></div></div>
+      <div class="chev" style="color:var(--muted);">edit ›</div></div>`).join("");
+  openModal(`
+    <h3>Custom categories</h3>
+    <div style="max-height:260px; overflow-y:auto; margin-bottom:8px;">${rows || `<div class="empty-state">None yet.</div>`}</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="ccClose">Close</button>
+      <button class="btn-primary" id="ccAdd">Add category</button>
+    </div>
+  `);
+  document.getElementById("ccClose").addEventListener("click", closeModal);
+  document.getElementById("ccAdd").addEventListener("click", ()=> openCategoryForm(null));
+  modalBody.querySelectorAll("[data-cat-edit]").forEach(el=>{
+    el.addEventListener("click", ()=> openCategoryForm(el.dataset.catEdit));
+  });
+}
+
+function openCategoryForm(id){
+  const c = id ? CUSTOM_CATEGORIES.find(x=> x.id === id) : {name:"", emoji:""};
+  openModal(`
+    <h3>${id ? "Edit category" : "New category"}</h3>
+    <div class="field"><label>Name</label><input id="ccName" value="${escapeHtml(c.name)}" placeholder="e.g. Pets" maxlength="20" /></div>
+    <div class="field"><label>Emoji</label><input id="ccEmoji" value="${escapeHtml(c.emoji)}" placeholder="🐶" /></div>
+    <div class="hint">Tip: use your phone's emoji keyboard. Leave blank for 🏷️.</div>
+    <div class="modal-actions">
+      ${id ? `<button class="btn-danger" id="ccDelete">Delete</button>` : ""}
+      <button class="btn-ghost" id="ccCancel">Cancel</button>
+      <button class="btn-primary" id="ccSave">Save</button>
+    </div>
+  `);
+  document.getElementById("ccCancel").addEventListener("click", closeModal);
+  document.getElementById("ccSave").addEventListener("click", async ()=>{
+    const name = document.getElementById("ccName").value.trim();
+    const emoji = firstEmoji(document.getElementById("ccEmoji").value);
+    if(!name){ toast("Give it a name"); return; }
+    const clash = CATEGORIES.some(x=> x.id !== id && x.name.toLowerCase() === name.toLowerCase());
+    if(clash){ toast("That name already exists"); return; }
+    if(id){ Object.assign(c, {name, emoji}); }
+    else CUSTOM_CATEGORIES.push({id:"c_" + uid(), name, emoji});
+    await saveCustomCategories();
+    closeModal();
+    toast(id ? "Category updated" : "Category added");
+  });
+  const del = document.getElementById("ccDelete");
+  if(del) del.addEventListener("click", async ()=>{
+    // Entries, recurring items and budgets using it move to "Other" so nothing is lost
+    const entries = await idbGetAll("entries");
+    for(const e of entries){ if(e.category === id){ e.category = "other"; await idbPut("entries", e); } }
+    const rules = await idbGetAll("recurring");
+    for(const r of rules){ if(r.category === id){ r.category = "other"; await idbPut("recurring", r); } }
+    await idbDelete("budgets", id);
+    for(const pl of await idbGetAll("plans")){
+      if(pl.limits && pl.limits[id] != null){
+        const limits = Object.assign({}, pl.limits);
+        limits.other = Math.round(((limits.other||0) + limits[id])*100)/100;
+        delete limits[id];
+        await idbPut("plans", Object.assign({}, pl, {limits, updatedAt: Date.now()}));
+      }
+    }
+    CUSTOM_CATEGORIES = CUSTOM_CATEGORIES.filter(x=> x.id !== id);
+    await saveCustomCategories();
+    closeModal();
+    toast("Category deleted — entries moved to Other");
+  });
+}
+
+let draft = { category:"food", type:"expense", amountStr:"" };
+
+function startNumpad(catId){
+  draft = { category: catId, type: catId==="income" ? "income" : "expense", amountStr:"" };
+  document.getElementById("numCatTag").textContent = catInfo(catId).emoji + " " + catInfo(catId).name;
+  setType(draft.type);
+  updateNumDisplay();
+  document.getElementById("numAccount").innerHTML = acctOptions(defaultAcctId());
+  showScreen("screen-numpad");
+}
+document.getElementById("goManual").addEventListener("click", ()=> showScreen("screen-category"));
+
+function setType(t){
+  draft.type = t;
+  document.getElementById("typeExpense").classList.toggle("active", t==="expense");
+  document.getElementById("typeIncome").classList.toggle("active", t==="income");
+}
+document.getElementById("typeExpense").addEventListener("click", ()=> setType("expense"));
+document.getElementById("typeIncome").addEventListener("click", ()=> setType("income"));
+
+function updateNumDisplay(){
+  const val = draft.amountStr || "0";
+  document.getElementById("numDisplay").textContent = "$" + formatAmountStr(val);
+  document.getElementById("saveManual").disabled = parseFloat(val) <= 0 || isNaN(parseFloat(val));
+}
+function formatAmountStr(s){
+  if(s.includes(".")){
+    const [a,b] = s.split(".");
+    return (a===""?"0":a) + "." + b.slice(0,2);
+  }
+  return s;
+}
+
+const numpadKeys = ["1","2","3","4","5","6","7","8","9",".","0","⌫"];
+const numpadEl = document.getElementById("numpad");
+numpadKeys.forEach(k=>{
+  const b = document.createElement("button");
+  b.textContent = k;
+  if(k==="⌫") b.classList.add("wide");
+  b.addEventListener("click", ()=>{
+    if(k==="⌫"){ draft.amountStr = draft.amountStr.slice(0,-1); }
+    else if(k==="." ){ if(!draft.amountStr.includes(".")) draft.amountStr += "."; }
+    else {
+      if(draft.amountStr.includes(".") && draft.amountStr.split(".")[1]?.length>=2) return;
+      if(draft.amountStr.replace(".","").length >= 7) return;
+      draft.amountStr += k;
+    }
+    updateNumDisplay();
+  });
+  numpadEl.appendChild(b);
+});
+
+document.getElementById("saveManual").addEventListener("click", async ()=>{
+  const amount = parseFloat(draft.amountStr);
+  if(!amount || amount<=0) return;
+  const entry = {
+    id: uid(),
+    type: draft.type,
+    amount,
+    category: draft.category,
+    date: todayISO(),
+    note: "",
+    createdAt: Date.now(),
+    accountId: document.getElementById("numAccount").value,
+  };
+  await idbPut("entries", entry);
+  await rememberAccount(entry.accountId);
+  toast("Saved");
+  showScreen("screen-home");
+});
+
+/* ============================================================
+   PHOTO / RECEIPT FLOW
+============================================================ */
+const cameraInput = document.getElementById("cameraInput");
+document.getElementById("openCamera").addEventListener("click", ()=> cameraInput.click());
+
+cameraInput.addEventListener("change", async ()=>{
+  const file = cameraInput.files[0];
+  if(!file) return;
+  const dataUrl = await fileToDataURL(file);
+  await runReceiptParse(dataUrl);
+  cameraInput.value = "";
+});
+
+function fileToDataURL(file){
+  return new Promise((resolve)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result);
+    r.readAsDataURL(file);
+  });
+}
+
+/* ---- Rate limiting: protects against accidentally exceeding the free tier ----
+   Google's Gemini free tier is generous but has per-minute and per-day caps that
+   vary by model/account. These limits are set conservatively below that ceiling
+   so you never get close to a point where usage could turn into a paid overage.
+   Only successful reads count — a failed attempt (bad key, network error, etc.)
+   never eats into your count. */
+const RATE_LIMIT_PER_MINUTE = 4;
+const RATE_LIMIT_PER_DAY = 40;
+
+async function checkRateLimit(){
+  const log = (await getSetting("requestLog")) || [];
+  const now = Date.now();
+  const dayAgo = now - 24*60*60*1000;
+  const minuteAgo = now - 60*1000;
+  const recentDay = log.filter(t=> t > dayAgo);
+  const recentMinute = recentDay.filter(t=> t > minuteAgo);
+  if(recentMinute.length >= RATE_LIMIT_PER_MINUTE){
+    const waitSec = Math.ceil((recentMinute[0] + 60*1000 - now) / 1000);
+    return { ok:false, message: `Slow down a sec — try again in ${waitSec}s (limit: ${RATE_LIMIT_PER_MINUTE}/min).` };
+  }
+  if(recentDay.length >= RATE_LIMIT_PER_DAY){
+    return { ok:false, message: `You've hit today's limit of ${RATE_LIMIT_PER_DAY} automatic reads. Enter this one manually, or try again tomorrow.` };
+  }
+  return { ok:true };
+}
+
+async function recordSuccessfulRequest() {
+    const log = (await getSetting("requestLog")) || [];
+    const now = Date.now();
+    const dayAgo = now - 24 * 60 * 60 * 1000;
+
+    const recentDay = log.filter(t => t > dayAgo);
+
+    // Only successful Gemini receipt reads are recorded
+    recentDay.push(now);
+
+    await setSetting("requestLog", recentDay);
+}
+
+
+// Prevent multiple Gemini receipt requests from running at the same time
+let receiptParseInProgress = false;
+
+
+async function runReceiptParse(dataUrl) {
+
+    // Prevent accidental duplicate requests from double-clicks,
+    // multiple event listeners, or rapid repeated clicks.
+    if (receiptParseInProgress) {
+        console.log("⏳ Receipt read already in progress — ignoring duplicate request.");
+        return;
+    }
+
+    receiptParseInProgress = true;
+
+    const stage = document.getElementById("photoStage");
+
+    try {
+
+        // Show loading state
+        stage.innerHTML = `
+            <img class="preview-img" src="${dataUrl}" />
+            <div class="spinner"></div>
+            <p>Reading receipt…</p>
+        `;
+
+
+        // Get API key
+        const apiKey = await getSetting("apiKey");
+
+
+        // ---------------------------------------------------------
+        // No API key
+        // ---------------------------------------------------------
+
+        if (!apiKey) {
+
+            stage.innerHTML = `
+                <img class="preview-img" src="${dataUrl}" />
+                <p>
+                    No API key set yet. Add your free Google Gemini API key
+                    in Settings to enable automatic reading, or enter these
+                    details by hand.
+                </p>
+                <button class="capture-btn" id="manualFromPhoto">
+                    Enter manually
+                </button>
+            `;
+
+            document
+                .getElementById("manualFromPhoto")
+                .addEventListener("click", () => {
+
+                    showConfirm(dataUrl, {
+                        merchant: "",
+                        amount: "",
+                        date: todayISO(),
+                        category: "other"
+                    });
+
+                });
+
+            return;
+        }
+
+
+        // ---------------------------------------------------------
+        // Check YOUR APP'S rate limit
+        // ---------------------------------------------------------
+
+        const limit = await checkRateLimit();
+
+        if (!limit.ok) {
+
+            stage.innerHTML = `
+                <img class="preview-img" src="${dataUrl}" />
+                <p>${escapeHtml(limit.message)}</p>
+                <button class="capture-btn" id="manualFromPhotoLimit">
+                    Enter manually
+                </button>
+            `;
+
+            document
+                .getElementById("manualFromPhotoLimit")
+                .addEventListener("click", () => {
+
+                    showConfirm(dataUrl, {
+                        merchant: "",
+                        amount: "",
+                        date: todayISO(),
+                        category: "other"
+                    });
+
+                });
+
+            return;
+        }
+
+
+        // ---------------------------------------------------------
+        // Send exactly ONE request to Gemini
+        // ---------------------------------------------------------
+
+        console.log(
+            "🚀 Sending receipt to Gemini:",
+            new Date().toISOString()
+        );
+
+
+        const parsed = await parseReceiptWithGemini(dataUrl, apiKey);
+
+
+        // ---------------------------------------------------------
+        // ONLY successful receipt reads are counted
+        // ---------------------------------------------------------
+
+        await recordSuccessfulRequest();
+
+        console.log(
+            "✅ Receipt successfully read. Request recorded."
+        );
+
+
+        // Show the successfully parsed receipt
+        showConfirm(dataUrl, parsed);
+
+
+    } catch (err) {
+
+        const message = err?.message || "Unknown error";
+
+        console.error(
+            "❌ Receipt reading failed:",
+            err
+        );
+
+
+        let userMessage;
+
+
+        // ---------------------------------------------------------
+        // Google rate limit — HTTP 429
+        // ---------------------------------------------------------
+
+        if (
+            message.includes("API error 429") ||
+            message.includes("429") ||
+            message.toLowerCase().includes("too many requests")
+        ) {
+
+            userMessage =
+                "Google Gemini is temporarily rate-limiting requests. " +
+                "Please wait a moment and try again.";
+
+        }
+
+
+        // ---------------------------------------------------------
+        // Model / endpoint not found — HTTP 404
+        // ---------------------------------------------------------
+
+        else if (
+            message.includes("API error 404") ||
+            message.includes("404")
+        ) {
+
+            userMessage =
+                "The Gemini receipt-reading service could not be found. " +
+                "Please check the Gemini API or model settings.";
+
+        }
+
+
+        // ---------------------------------------------------------
+        // API key / permissions — HTTP 401 or 403
+        // ---------------------------------------------------------
+
+        else if (
+            message.includes("API error 401") ||
+            message.includes("API error 403") ||
+            message.includes("401") ||
+            message.includes("403")
+        ) {
+
+            userMessage =
+                "There is a problem with your Gemini API key or its permissions.";
+
+        }
+
+
+        // ---------------------------------------------------------
+        // Gemini server error — HTTP 500/502/503
+        // ---------------------------------------------------------
+
+        else if (
+            message.includes("API error 500") ||
+            message.includes("API error 502") ||
+            message.includes("API error 503")
+        ) {
+
+            userMessage =
+                "Google Gemini is temporarily unavailable. " +
+                "Please try again in a moment.";
+
+        }
+
+
+        // ---------------------------------------------------------
+        // Everything else
+        // Includes unreadable receipts, invalid JSON,
+        // malformed responses, network errors, etc.
+        // ---------------------------------------------------------
+
+        else {
+
+            userMessage =
+                "This receipt couldn't be read automatically. " +
+                "You can enter the details manually.";
+
+        }
+
+
+        // Show error + manual entry option
+        stage.innerHTML = `
+            <img class="preview-img" src="${dataUrl}" />
+            <p>${escapeHtml(userMessage)}</p>
+            <button class="capture-btn" id="manualFromPhoto2">
+                Enter manually
+            </button>
+        `;
+
+
+        document
+            .getElementById("manualFromPhoto2")
+            .addEventListener("click", () => {
+
+                showConfirm(dataUrl, {
+                    merchant: "",
+                    amount: "",
+                    date: todayISO(),
+                    category: "other"
+                });
+
+            });
+
+
+    } finally {
+
+        // Always unlock the receipt reader.
+        // This runs whether the request succeeded or failed.
+        receiptParseInProgress = false;
+
+    }
+}
+
+async function parseReceiptWithGemini(dataUrl, apiKey){
+  const [, meta, base64] = dataUrl.match(/^data:(.+);base64,(.+)$/);
+  const model = "gemini-3.6-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: meta, data: base64 } },
+          { text:
+            "Read this receipt image. Return ONLY raw JSON, no markdown fences, no commentary, in exactly this shape: " +
+            '{"merchant":"string","amount":number,"date":"YYYY-MM-DD","category":"one of food|transport|shopping|bills|health|fun|home|other"}. ' +
+            "If a field is unreadable, use your best guess; for date, if missing assume today's date " + todayISO() + "."
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0,
+        maxOutputTokens: 1024,
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingLevel: "minimal" }
+      }
+    })
+  });
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    throw new Error("API error " + res.status + (t ? ": " + t.slice(0,1000) : ""));
+  }
+  const data = await res.json();
+  const finishReason = data.candidates?.[0]?.finishReason;
+  const blockReason = data.promptFeedback?.blockReason;
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p=> p.text || "").join("").trim();
+  console.log("Gemini full response:", JSON.stringify(data, null, 2));
+  if(!text){
+    throw new Error(
+      "Empty response from Gemini" +
+      (blockReason ? ` (blocked: ${blockReason})` : "") +
+      (finishReason && finishReason !== "STOP" ? ` (finishReason: ${finishReason})` : "")
+    );
+  }
+  // responseMimeType:"application/json" should make `text` raw JSON already.
+  // Still strip stray markdown fences defensively, then fall back to grabbing
+  // the outermost {...} block in case the model adds any extra chatter.
+  let cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+  let json;
+  try{
+    json = JSON.parse(cleaned);
+  }catch(e){
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if(!match){
+      console.error("Gemini raw response text (unparseable):", text);
+      throw new Error("Couldn't parse Gemini's response as JSON: " + text.slice(0,200));
+    }
+    json = JSON.parse(match[0]);
+  }
+  return {
+    merchant: json.merchant || "",
+    amount: json.amount != null ? String(json.amount) : "",
+    date: /^\d{4}-\d{2}-\d{2}$/.test(json.date) ? json.date : todayISO(),
+    category: CATEGORIES.some(c=>c.id===json.category) ? json.category : "other",
+  };
+}
+
+function showConfirm(dataUrl, parsed){
+  const stage = document.getElementById("photoStage");
+  const catOptions = CATEGORIES.filter(c=>c.id!=="income").map(c=>
+    `<option value="${c.id}" ${c.id===parsed.category?"selected":""}>${c.emoji} ${c.name}</option>`
+  ).join("");
+  stage.innerHTML = `
+    <img class="preview-img" src="${dataUrl}" style="max-height:150px;" />
+    <div class="confirm-card" style="width:100%;">
+      <div class="confirm-row"><label>Merchant</label><input id="cfMerchant" value="${escapeHtml(parsed.merchant||"")}" placeholder="—" /></div>
+      <div class="confirm-row"><label>Amount</label><input id="cfAmount" class="mono" inputmode="decimal" value="${escapeHtml(parsed.amount||"")}" placeholder="0.00" /></div>
+      <div class="confirm-row"><label>Date</label><input id="cfDate" type="date" value="${parsed.date}" /></div>
+      <div class="confirm-row"><label>Category</label><select id="cfCategory">${catOptions}</select></div>
+      <div class="confirm-row"><label>Account</label><select id="cfAccount">${acctOptions(defaultAcctId())}</select></div>
+    </div>
+    <button class="capture-btn" id="confirmSave" style="width:100%;">Save entry</button>
+  `;
+  document.getElementById("confirmSave").addEventListener("click", async ()=>{
+    const amount = parseFloat(document.getElementById("cfAmount").value);
+    if(!amount || amount<=0){ toast("Enter a valid amount"); return; }
+    const entry = {
+      id: uid(),
+      type: "expense",
+      amount,
+      category: document.getElementById("cfCategory").value,
+      date: document.getElementById("cfDate").value || todayISO(),
+      note: document.getElementById("cfMerchant").value || "",
+      createdAt: Date.now(),
+      accountId: document.getElementById("cfAccount").value,
+    };
+    await idbPut("entries", entry);
+    await rememberAccount(entry.accountId);
+    const month = entry.date.slice(0,7);
+    await idbPut("receipts", {
+      id: uid(),
+      entryId: entry.id,
+      month,
+      imageDataUrl: await shrinkDataUrl(dataUrl),
+      createdAt: Date.now(),
+    });
+    toast("Saved");
+    resetPhotoStage();
+    showScreen("screen-home");
+  });
+}
+
+function resetPhotoStage(){
+  document.getElementById("photoStage").innerHTML = `
+    <div class="big-emoji">🧾</div>
+    <p>Take a clear photo of the receipt. Claude will read the merchant, total, date, and category.</p>
+    <button class="capture-btn" id="openCamera2">Open camera</button>`;
+  document.getElementById("openCamera2").addEventListener("click", ()=> cameraInput.click());
+}
+document.getElementById("goPhoto").addEventListener("click", ()=>{ resetPhotoStage(); showScreen("screen-photo"); });
+
+/* ============================================================
+   OVERVIEW
+============================================================ */
+let overviewAcct = "all"; // "all" or an account id
+let overviewMonth = new Date(); // first of current month tracked via .getMonth/.getFullYear
+overviewMonth.setDate(1); // day 1, so stepping months never skips one (e.g. from the 31st)
+
+function monthKey(d){ return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); }
+function monthLabel(d){ return d.toLocaleDateString(undefined, {month:"long", year:"numeric"}); }
+
+document.getElementById("prevMonth").addEventListener("click", ()=>{
+  overviewMonth.setMonth(overviewMonth.getMonth()-1);
+  renderOverview();
+});
+document.getElementById("nextMonth").addEventListener("click", ()=>{
+  overviewMonth.setMonth(overviewMonth.getMonth()+1);
+  renderOverview();
+});
+
+async function renderOverview(){
+  document.getElementById("overviewMonthLabel").textContent = monthLabel(overviewMonth);
+  const key = monthKey(overviewMonth);
+  await loadAccounts();
+  if(overviewAcct !== "all" && !acctInfo(overviewAcct)) overviewAcct = "all";
+  const all = await idbGetAll("entries");
+  renderAcctSwitch(all);
+  const scoped = overviewAcct === "all" ? all : all.filter(e=> e.accountId === overviewAcct || e.toAccountId === overviewAcct);
+  const entries = scoped.filter(e=> e.date.slice(0,7) === key);
+
+  const totalIn = entries.filter(e=>e.type==="income").reduce((s,e)=>s+e.amount,0);
+  const totalOut = entries.filter(e=>e.type==="expense").reduce((s,e)=>s+e.amount,0);
+  const net = totalIn - totalOut;
+  document.getElementById("totalIn").textContent = fmtMoney(totalIn);
+  document.getElementById("totalOut").textContent = fmtMoney(totalOut);
+  const netEl = document.getElementById("totalNet");
+  netEl.textContent = (net<0?"-":"") + fmtMoney(Math.abs(net));
+  netEl.className = "v " + (net>=0 ? "pos":"neg");
+
+  // Category breakdown with budgets
+  // Budgets come from this month's plan for the selected account (or all accounts).
+  // Months without a plan fall back to the old single "monthly limit" per category (all accounts only).
+  const plans = await idbGetAll("plans");
+  const budgetMap = await effectiveLimits(plans, key, overviewAcct);
+  const byCat = {};
+  entries.filter(e=>e.type==="expense").forEach(e=>{
+    byCat[e.category] = (byCat[e.category]||0) + e.amount;
+  });
+  const catWrap = document.getElementById("categoryBreakdown");
+  const catIds = Object.keys(byCat).sort((a,b)=> byCat[b]-byCat[a]);
+  if(!catIds.length){
+    catWrap.innerHTML = `<div class="empty-state">No expenses logged this month yet.</div>`;
+  } else {
+    const maxVal = Math.max(...catIds.map(c=>byCat[c]));
+    catWrap.innerHTML = catIds.map(cid=>{
+      const c = catInfo(cid);
+      const val = byCat[cid];
+      const budget = budgetMap[cid];
+      const pct = Math.min(100, (val / (budget || maxVal)) * 100);
+      const over = budget && val > budget;
+      const budgetTxt = budget ? `${fmtMoney(val)} of ~${fmtMoney(budget)}` : fmtMoney(val);
+      return `
+        <div class="cat-bar-row" data-set-budget="${cid}">
+          <div class="top"><span>${c.emoji} ${c.name}</span><span class="budget">${budgetTxt}</span></div>
+          <div class="cat-bar-track"><div class="cat-bar-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+        </div>`;
+    }).join("");
+    catWrap.querySelectorAll("[data-set-budget]").forEach(row=>{
+      row.addEventListener("click", ()=>{ openBudgetModal(row.dataset.setBudget, budgetMap[row.dataset.setBudget]); });
+    });
+  }
+
+  // Timeline grouped by day
+  const timelineWrap = document.getElementById("timelineWrap");
+  if(!entries.length){
+    timelineWrap.innerHTML = `<div class="empty-state">Nothing logged in ${monthLabel(overviewMonth)}.</div>`;
+    return;
+  }
+  const byDay = {};
+  entries.forEach(e=>{ (byDay[e.date] ||= []).push(e); });
+  const days = Object.keys(byDay).sort((a,b)=> b.localeCompare(a));
+  timelineWrap.innerHTML = days.map(day=>{
+    const dayEntries = byDay[day].sort((a,b)=> b.createdAt-a.createdAt);
+    const rows = dayEntries.map(e=>{
+      const c = entryDisplay(e);
+      const sub = entrySub(e);
+      let sign, cls = e.type;
+      if(e.type === "transfer"){ cls = "transfer"; sign = overviewAcct === "all" ? "" : (e.toAccountId === overviewAcct ? "+" : "-"); }
+      else sign = e.type === "income" ? "+" : "-";
+      return `
+        <div class="entry-row" data-entry="${e.id}">
+          <div class="left">
+            <div class="emoji">${c.emoji}</div>
+            <div class="meta"><div class="cat">${c.name}</div>${sub?`<div class="note">${escapeHtml(sub)}</div>`:""}</div>
+          </div>
+          <div class="amt ${cls}">${sign}${fmtMoney(e.amount)}</div>
+        </div>`;
+    }).join("");
+    return `<div class="timeline-day"><div class="date">${fmtDateLong(day)}</div>${rows}</div>`;
+  }).join("");
+  timelineWrap.querySelectorAll("[data-entry]").forEach(row=>{
+    row.addEventListener("click", ()=> openEditEntry(row.dataset.entry));
+  });
+}
+
+function openBudgetModal(catId, current){
+  const c = catInfo(catId);
+  const key = monthKey(overviewMonth);
+  const scopeName = overviewAcct === "all" ? "All accounts" : acctName(overviewAcct);
+  openModal(`
+    <h3>${c.emoji} ${c.name} budget</h3>
+    <div class="field"><label>Limit for ${escapeHtml(monthLabel(overviewMonth))} · ${escapeHtml(scopeName)} ($, optional)</label><input id="budgetInput" class="mono" inputmode="decimal" value="${current||""}" placeholder="No limit set" /></div>
+    <div class="hint">Set the whole month at once under Budget in the menu.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="budgetCancel">Cancel</button>
+      <button class="btn-primary" id="budgetSave">Save</button>
+    </div>
+  `);
+  document.getElementById("budgetCancel").addEventListener("click", closeModal);
+  document.getElementById("budgetSave").addEventListener("click", async ()=>{
+    const val = parseFloat(document.getElementById("budgetInput").value.replace(",", "."));
+    const plans = await idbGetAll("plans");
+    const plan = findPlan(plans, key, overviewAcct);
+    const limits = plan ? Object.assign({}, plan.limits) : await effectiveLimits(plans, key, overviewAcct);
+    if(val > 0) limits[catId] = Math.round(val*100)/100; else delete limits[catId];
+    await savePlan(key, overviewAcct, limits, plan);
+    closeModal();
+    renderOverview();
+  });
+}
+
+async function openEditEntry(id){
+  const e = await idbGet("entries", id);
+  if(!e) return;
+  if(e.type === "transfer"){ openEditTransfer(e); return; }
+  await loadAccounts();
+  const catOptions = CATEGORIES.map(c=>
+    `<option value="${c.id}" ${c.id===e.category?"selected":""}>${c.emoji} ${c.name}</option>`
+  ).join("");
+  openModal(`
+    <h3>Edit entry</h3>
+    <div class="field"><label>Amount</label><input id="editAmount" class="mono" inputmode="decimal" value="${e.amount}" /></div>
+    <div class="field"><label>Category</label><select id="editCategory">${catOptions}</select></div>
+    <div class="field"><label>Account</label><select id="editAccount">${acctOptions(e.accountId)}</select></div>
+    <div class="field"><label>Date</label><input id="editDate" type="date" value="${e.date}" /></div>
+    <div class="field"><label>Note</label><input id="editNote" value="${escapeHtml(e.note||"")}" placeholder="Optional" /></div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="editDelete">Delete</button>
+      <button class="btn-primary" id="editSave">Save</button>
+    </div>
+  `);
+  document.getElementById("editDelete").addEventListener("click", async ()=>{
+    await idbDelete("entries", id);
+    closeModal();
+    renderOverview(); renderLastEntry();
+    toast("Deleted");
+  });
+  document.getElementById("editSave").addEventListener("click", async ()=>{
+    const amount = parseFloat(document.getElementById("editAmount").value);
+    if(!amount || amount<=0){ toast("Enter a valid amount"); return; }
+    e.amount = amount;
+    e.category = document.getElementById("editCategory").value;
+    e.accountId = document.getElementById("editAccount").value;
+    e.date = document.getElementById("editDate").value;
+    e.note = document.getElementById("editNote").value;
+    await idbPut("entries", e);
+    closeModal();
+    renderOverview(); renderLastEntry();
+    toast("Updated");
+  });
+}
+
+/* ============================================================
+   RECEIPTS ARCHIVE
+============================================================ */
+async function renderReceipts(){
+  const receipts = await idbGetAll("receipts");
+  const wrap = document.getElementById("receiptsWrap");
+  if(!receipts.length){
+    wrap.innerHTML = `<div class="empty-state">No receipt photos yet. They'll show up here after you snap one.</div>`;
+    return;
+  }
+  const entries = await idbGetAll("entries");
+  const entryMap = {}; entries.forEach(e=> entryMap[e.id]=e);
+
+  const byMonth = {};
+  receipts.forEach(r=> (byMonth[r.month] ||= []).push(r));
+  const months = Object.keys(byMonth).sort((a,b)=> b.localeCompare(a));
+
+  wrap.innerHTML = months.map(m=>{
+    const label = new Date(m+"-01T00:00:00").toLocaleDateString(undefined,{month:"long", year:"numeric"});
+    const thumbs = byMonth[m].sort((a,b)=>b.createdAt-a.createdAt).map(r=>{
+      const entry = entryMap[r.entryId];
+      const amtTxt = entry ? fmtMoney(entry.amount) : "";
+      return `<div class="receipt-thumb" data-receipt="${r.id}"><img loading="lazy" src="/api/receipts/${encodeURIComponent(r.id)}/image" />${amtTxt?`<div class="amt-tag">${amtTxt}</div>`:""}</div>`;
+    }).join("");
+    return `<div class="receipt-month-group"><div class="section-title" style="margin-top:0;">${label}</div><div class="receipt-grid">${thumbs}</div></div>`;
+  }).join("");
+
+  wrap.querySelectorAll("[data-receipt]").forEach(el=>{
+    el.addEventListener("click", async ()=>{
+      const r = await idbGet("receipts", el.dataset.receipt);
+      const entry = entryMap[r.entryId];
+      openModal(`
+        <h3>Receipt</h3>
+        <img src="/api/receipts/${encodeURIComponent(r.id)}/image" style="width:100%;border-radius:12px;margin-bottom:12px;" />
+        ${entry ? `<div class="confirm-card"><div class="confirm-row"><label>Category</label><span>${catInfo(entry.category).emoji} ${catInfo(entry.category).name}</span></div><div class="confirm-row"><label>Amount</label><span class="mono">${fmtMoney(entry.amount)}</span></div><div class="confirm-row"><label>Date</label><span>${fmtDateLong(entry.date)}</span></div></div>` : ""}
+        <div class="modal-actions">
+          <button class="btn-ghost" id="closeReceiptModal">Close</button>
+          ${entry ? `<button class="btn-primary" id="jumpToEntry">Edit entry</button>` : ""}
+        </div>
+      `);
+      document.getElementById("closeReceiptModal").addEventListener("click", closeModal);
+      const jump = document.getElementById("jumpToEntry");
+      if(jump) jump.addEventListener("click", ()=>{ closeModal(); openEditEntry(entry.id); });
+    });
+  });
+}
+
+/* ============================================================
+   BUDGET
+   A budget "plan" is saved per month and per scope (all accounts, or one account):
+   { id:"2026-11:all", month:"2026-11", accountId:"all", limits:{ food:300, home:900, ... } }
+   Spent  = expenses only (transfers between your own accounts don't count).
+   Saved  = budgeted amount minus what was spent in the budgeted categories.
+            Spending in categories without a budget is shown separately.
+============================================================ */
+let budgetMonth = new Date(); budgetMonth.setDate(1);
+let budgetScope = "all";
+
+const round2 = (n)=> Math.round((Number(n)||0)*100)/100;
+function planIdOf(key, scope){ return key + ":" + scope; }
+function findPlan(plans, key, scope){ return plans.find(p=> p.month === key && p.accountId === scope) || null; }
+function planTotalOf(plan){ let t = 0; if(plan && plan.limits) for(const v of Object.values(plan.limits)) if(v > 0) t += v; return round2(t); }
+function monthShift(key, delta){ const [y,m] = key.split("-").map(Number); return monthKey(new Date(y, m-1+delta, 1)); }
+function keyLabel(key){ const [y,m] = key.split("-").map(Number); return monthLabel(new Date(y, m-1, 1)); }
+function keyShort(key){ const [y,m] = key.split("-").map(Number); return new Date(y, m-1, 1).toLocaleDateString(undefined, {month:"short"}); }
+
+// Old versions kept one "monthly limit" per category. It is only used when a month has no plan yet.
+async function legacyLimits(){
+  const out = {};
+  (await idbGetAll("budgets")).forEach(b=>{ if(b.monthlyLimit > 0) out[b.category] = b.monthlyLimit; });
+  return out;
+}
+async function effectiveLimits(plans, key, scope){
+  const plan = findPlan(plans, key, scope);
+  if(plan) return Object.assign({}, plan.limits);
+  return scope === "all" ? legacyLimits() : {};
+}
+function previousPlan(plans, key, scope){
+  return plans.filter(p=> p.accountId === scope && p.month < key && planTotalOf(p) > 0)
+              .sort((a,b)=> b.month.localeCompare(a.month))[0] || null;
+}
+async function savePlan(key, scope, limits, existing){
+  const id = planIdOf(key, scope);
+  const clean = {};
+  Object.keys(limits).forEach(k=>{ if(limits[k] > 0) clean[k] = round2(limits[k]); });
+  if(!Object.keys(clean).length){
+    if(existing) await idbDelete("plans", id);
+    return null;
+  }
+  const plan = {id, month:key, accountId:scope, limits:clean, createdAt: existing ? (existing.createdAt || Date.now()) : Date.now(), updatedAt: Date.now()};
+  await idbPut("plans", plan);
+  return plan;
+}
+
+function spendByCategory(entries, key, scope){
+  const m = {};
+  entries.forEach(e=>{
+    if(e.type !== "expense" || String(e.date).slice(0,7) !== key) return;
+    if(scope !== "all" && e.accountId !== scope) return;
+    m[e.category] = (m[e.category]||0) + e.amount;
+  });
+  return m;
+}
+// Same arithmetic as the PDF report on the server.
+function computeBudget(limits, byCat){
+  const rows = []; let totalLimit = 0, spentIn = 0, unbudgeted = 0;
+  const ids = new Set(Object.keys(byCat).concat(Object.keys(limits).filter(k=> limits[k] > 0)));
+  ids.forEach(id=>{
+    const limit = limits[id] > 0 ? limits[id] : 0, spent = byCat[id] || 0;
+    if(limit > 0){ totalLimit += limit; spentIn += spent; rows.push({id, limit, spent, left: limit - spent}); }
+    else if(spent > 0) unbudgeted += spent;
+  });
+  rows.sort((a,b)=> b.limit - a.limit);
+  return {rows, totalLimit: round2(totalLimit), spentIn: round2(spentIn), saved: round2(totalLimit - spentIn), unbudgeted: round2(unbudgeted), has: totalLimit > 0};
+}
+
+document.getElementById("prevBudgetMonth").addEventListener("click", ()=>{ budgetMonth = new Date(budgetMonth.getFullYear(), budgetMonth.getMonth()-1, 1); renderBudget(); });
+document.getElementById("nextBudgetMonth").addEventListener("click", ()=>{ budgetMonth = new Date(budgetMonth.getFullYear(), budgetMonth.getMonth()+1, 1); renderBudget(); });
+document.getElementById("budgetScope").addEventListener("change", (ev)=>{ budgetScope = ev.target.value; renderBudget(); });
+
+async function renderBudget(){
+  await loadAccounts();
+  if(budgetScope !== "all" && !acctInfo(budgetScope)) budgetScope = "all";
+  const sel = document.getElementById("budgetScope");
+  sel.innerHTML = `<option value="all">🏦 All accounts</option>` + ACCOUNTS.map(a=> `<option value="${a.id}">${a.type==="credit"?"💳":"🏦"} ${escapeHtml(a.name)}</option>`).join("");
+  sel.value = budgetScope;
+  const key = monthKey(budgetMonth);
+  document.getElementById("budgetMonthLabel").textContent = monthLabel(budgetMonth);
+
+  const [entries, plans] = await Promise.all([idbGetAll("entries"), idbGetAll("plans")]);
+  const plan = findPlan(plans, key, budgetScope);
+  const byCat = spendByCategory(entries, key, budgetScope);
+  const spentTotal = Object.values(byCat).reduce((s,v)=> s+v, 0);
+  const body = document.getElementById("budgetBody");
+  const scopeName = budgetScope === "all" ? "all accounts" : acctName(budgetScope);
+
+  /* ---- no budget for this month yet ---- */
+  if(!plan || !planTotalOf(plan)){
+    const prev = previousPlan(plans, key, budgetScope);
+    const legacy = budgetScope === "all" ? await legacyLimits() : {};
+    const hint = prev ? `Last budget was ${keyLabel(prev.month)} (${fmtMoney(planTotalOf(prev))}). Copy it, or change the amounts.`
+               : Object.keys(legacy).length ? "Your earlier category limits will be filled in for you to adjust." : "Choose how much you plan to spend in each category this month.";
+    body.innerHTML = `
+      <div class="bud-empty">
+        <div class="big">🎯</div>
+        <h3>No budget for ${escapeHtml(monthLabel(budgetMonth))}</h3>
+        <p>${escapeHtml(hint)}<br>Applies to ${escapeHtml(scopeName)}. Spent so far: ${fmtMoney(spentTotal)}.</p>
+        <div class="bud-btns">
+          <button class="btn-primary" id="budStart">Set up budget</button>
+          ${prev ? `<button class="btn-ghost" id="budCopy" style="border:1px solid rgba(247,243,232,0.15);">Copy ${escapeHtml(keyLabel(prev.month))}</button>` : ""}
+        </div>
+      </div>
+      ${await budgetHistoryHtml(plans, entries, key)}`;
+    document.getElementById("budStart").addEventListener("click", ()=> openPlanEditor(key, budgetScope));
+    const cp = document.getElementById("budCopy");
+    if(cp) cp.addEventListener("click", async ()=>{
+      await savePlan(key, budgetScope, prev.limits, plan);
+      toast("Budget copied from " + keyLabel(prev.month));
+      renderBudget();
+    });
+    wireHistory(body);
+    return;
+  }
+
+  /* ---- budget exists ---- */
+  const b = computeBudget(plan.limits, byCat);
+  const nowKey = monthKey(new Date());
+  const past = key < nowKey;
+  const label = b.saved < 0 ? "Over by" : (past ? "Saved" : "Left");
+  const pct = b.totalLimit ? (b.spentIn / b.totalLimit) * 100 : 0;
+  const cls = pct > 100 ? "over" : pct >= 85 ? "warn" : "";
+  const rowsHtml = b.rows.map(r=>{
+    const c = catInfo(r.id);
+    const p = r.limit ? (r.spent / r.limit) * 100 : 0;
+    const rc = p > 100 ? "over" : p >= 85 ? "warn" : "";
+    const leftTxt = r.left < 0 ? `over by ${fmtMoney(-r.left)}` : `${fmtMoney(r.left)} ${past ? "saved" : "left"}`;
+    return `
+      <div class="bud-row" data-bud-cat="${escapeHtml(r.id)}">
+        <div class="top"><span>${c.emoji} ${escapeHtml(c.name)}</span><span class="mono">${fmtMoney(r.spent)} / ${fmtMoney(r.limit)}</span></div>
+        <div class="cat-bar-track"><div class="bud-fill ${rc}" style="width:${Math.min(100,p)}%"></div></div>
+        <div class="sub"><span>${Math.round(p)}% used</span><span class="left ${r.left<0?"neg":"ok"}">${leftTxt}</span></div>
+      </div>`;
+  }).join("");
+
+  let accountsHtml = "";
+  if(budgetScope === "all"){
+    const rows = ACCOUNTS.map(a=>{
+      const ap = findPlan(plans, key, a.id);
+      if(!ap || !planTotalOf(ap)) return "";
+      const ab = computeBudget(ap.limits, spendByCategory(entries, key, a.id));
+      return `<div class="hist-row" data-bud-acct="${a.id}"><span class="m" style="flex:1;">${a.type==="credit"?"💳":"🏦"} ${escapeHtml(a.name)}</span><span class="b">${fmtMoney(ab.spentIn)} / ${fmtMoney(ab.totalLimit)}</span><span class="sv mono ${ab.saved<0?"bad":"good"}">${ab.saved<0?"over "+fmtMoney(-ab.saved):fmtMoney(ab.saved)}</span></div>`;
+    }).join("");
+    if(rows) accountsHtml = `<div class="section-title">Account budgets</div>${rows}`;
+  }
+
+  body.innerHTML = `
+    <div class="totals-row">
+      <div class="total-card"><div class="l">Budgeted</div><div class="v">${fmtMoney(b.totalLimit)}</div></div>
+      <div class="total-card"><div class="l">Spent</div><div class="v">${fmtMoney(b.spentIn)}</div></div>
+      <div class="total-card"><div class="l">${label}</div><div class="v ${b.saved<0?"bad":"good"}">${fmtMoney(Math.abs(b.saved))}</div></div>
+    </div>
+    <div class="bud-overall"><div class="bud-fill ${cls}" style="width:${Math.min(100,pct)}%"></div></div>
+    <div class="bud-overall-note">${Math.round(pct)}% of the budget used · ${escapeHtml(scopeName)}</div>
+    ${b.unbudgeted > 0 ? `<div class="bud-extra">Also spent ${fmtMoney(b.unbudgeted)} in categories without a budget (not counted above).</div>` : ""}
+    <div class="section-title">By category <span style="text-transform:none; letter-spacing:0;">· tap to change</span></div>
+    ${rowsHtml}
+    <div style="display:flex; gap:10px; margin:6px 0 4px;">
+      <button class="pill-btn solid" id="budEdit" style="flex:1;">Edit budget</button>
+      <button class="pill-btn" id="budExport" style="flex:1;">Export PDF / Drive</button>
+    </div>
+    ${accountsHtml}
+    ${await budgetHistoryHtml(plans, entries, key)}`;
+
+  document.getElementById("budEdit").addEventListener("click", ()=> openPlanEditor(key, budgetScope));
+  document.getElementById("budExport").addEventListener("click", ()=> openExport({period:"month", key}));
+  body.querySelectorAll("[data-bud-cat]").forEach(el=>{
+    el.addEventListener("click", ()=> openPlanEditor(key, budgetScope, el.dataset.budCat));
+  });
+  body.querySelectorAll("[data-bud-acct]").forEach(el=>{
+    el.addEventListener("click", ()=>{ budgetScope = el.dataset.budAcct; renderBudget(); });
+  });
+  wireHistory(body);
+}
+
+// A list of the year's months that have a budget, with how much was saved in each.
+async function budgetHistoryHtml(plans, entries, key){
+  const year = key.slice(0,4);
+  const nowKey = monthKey(new Date());
+  const mine = plans.filter(p=> p.accountId === budgetScope && p.month.slice(0,4) === year && planTotalOf(p) > 0)
+                    .sort((a,b)=> b.month.localeCompare(a.month));
+  if(!mine.length) return "";
+  let savedDone = 0, doneCount = 0;
+  const rows = mine.map(p=>{
+    const b = computeBudget(p.limits, spendByCategory(entries, p.month, budgetScope));
+    const done = p.month < nowKey;
+    if(done){ savedDone += b.saved; doneCount++; }
+    const svTxt = b.saved < 0 ? "over " + fmtMoney(-b.saved) : (done ? fmtMoney(b.saved) + " saved" : fmtMoney(b.saved) + " left");
+    return `<div class="hist-row ${p.month===key?"cur":""}" data-bud-month="${p.month}"><span class="m">${escapeHtml(keyShort(p.month))}</span><span class="b">${fmtMoney(b.spentIn)} / ${fmtMoney(b.totalLimit)}</span><span class="sv mono ${b.saved<0?"bad":"good"}">${svTxt}</span></div>`;
+  }).join("");
+  const summary = doneCount
+    ? `<div class="plan-total" style="border-top:none; margin:0 0 8px;"><span>Saved in ${doneCount} finished month${doneCount===1?"":"s"}</span><span class="mono" style="color:${savedDone<0?"var(--red)":"var(--green)"};">${savedDone<0?"-":""}${fmtMoney(Math.abs(savedDone))}</span></div>` : "";
+  return `<div class="section-title">${year} · months with a budget</div>${summary}${rows}`;
+}
+function wireHistory(root){
+  root.querySelectorAll("[data-bud-month]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const [y,m] = el.dataset.budMonth.split("-").map(Number);
+      budgetMonth = new Date(y, m-1, 1);
+      renderBudget();
+    });
+  });
+}
+
+// The full editor: one amount per category for one month and scope.
+async function openPlanEditor(key, scope, focusCat){
+  const [plans, legacy] = await Promise.all([idbGetAll("plans"), legacyLimits()]);
+  const existing = findPlan(plans, key, scope);
+  const prev = previousPlan(plans, key, scope);
+  const seed = existing ? existing.limits : prev ? prev.limits : (scope === "all" ? legacy : {});
+  const cats = CATEGORIES.filter(c=> c.id !== "income");
+  const scopeName = scope === "all" ? "All accounts" : acctName(scope);
+  const lines = cats.map(c=> `
+    <div class="plan-line">
+      <div class="nm">${c.emoji} ${escapeHtml(c.name)}</div>
+      <input class="plan-in" data-cat="${escapeHtml(c.id)}" inputmode="decimal" placeholder="0.00" value="${seed[c.id] > 0 ? seed[c.id] : ""}" />
+    </div>`).join("");
+  openModal(`
+    <h3>${escapeHtml(keyLabel(key))} budget</h3>
+    <div class="hint" style="margin-top:-8px;">${escapeHtml(scopeName)}${existing ? "" : prev ? " · started from " + escapeHtml(keyLabel(prev.month)) : ""}. Leave a category empty for no limit.</div>
+    <div style="max-height:50vh; max-height:50dvh; overflow-y:auto; padding-right:2px;">${lines}</div>
+    <div class="plan-total"><span>Total budget</span><span class="mono" id="planTotal">$0.00</span></div>
+    <div class="modal-actions">
+      ${existing ? `<button class="btn-danger" id="planRemove">Remove</button>` : ""}
+      <button class="btn-ghost" id="planCancel">Cancel</button>
+      <button class="btn-primary" id="planSave">Save</button>
+    </div>
+  `);
+  const inputs = Array.from(modalBody.querySelectorAll(".plan-in"));
+  const read = (el)=>{ const v = parseFloat(String(el.value).replace(",", ".")); return v > 0 ? v : 0; };
+  const upd = ()=>{ document.getElementById("planTotal").textContent = fmtMoney(inputs.reduce((s,el)=> s + read(el), 0)); };
+  inputs.forEach(el=> el.addEventListener("input", upd));
+  upd();
+  if(focusCat){ const t = inputs.find(el=> el.dataset.cat === focusCat); if(t){ t.focus(); t.select(); } }
+  document.getElementById("planCancel").addEventListener("click", closeModal);
+  const rm = document.getElementById("planRemove");
+  if(rm) rm.addEventListener("click", async ()=>{
+    await idbDelete("plans", planIdOf(key, scope));
+    closeModal(); toast("Budget removed"); refreshBudgetViews();
+  });
+  document.getElementById("planSave").addEventListener("click", async ()=>{
+    const limits = {};
+    inputs.forEach(el=>{ const v = read(el); if(v > 0) limits[el.dataset.cat] = v; });
+    // Keep limits for categories that aren't shown (none today, but never silently drop data).
+    if(existing) Object.keys(existing.limits).forEach(k=>{ if(!cats.some(c=> c.id === k) && limits[k] == null) limits[k] = existing.limits[k]; });
+    if(!Object.keys(limits).length){ toast("Enter at least one amount"); return; }
+    await savePlan(key, scope, limits, existing);
+    closeModal(); toast("Budget saved"); refreshBudgetViews();
+  });
+}
+function refreshBudgetViews(){
+  const active = document.querySelector(".screen.active");
+  const id = active && active.id;
+  if(id === "screen-budget") renderBudget();
+  else if(id === "screen-overview") renderOverview();
+}
+document.getElementById("openExport").addEventListener("click", ()=>{ closeSheet(); openExport(); });
+
+/* ============================================================
+   EXPORT — PDF overview per month / year / account, download or save to Google Drive
+   The PDF is made by the server (/api/report.pdf). Saving to Drive uses Google's
+   "drive.file" permission: Ledger can only see files it created itself, never the rest
+   of your Drive. The permission token stays in memory and is never sent to our server.
+============================================================ */
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+let drive = { ready:false, tokenClient:null, token:null, exp:0, pending:null };
+
+async function apiBlob(path){
+  const res = await fetch(path, {credentials:"same-origin"});
+  if(res.status === 401){ showLogin("Your session expired. Please sign in again."); throw new Error("signed-out"); }
+  if(!res.ok){
+    let msg = "Couldn't create the PDF (" + res.status + ")";
+    try{ const j = await res.json(); if(j && j.error) msg = j.error; }catch(e){}
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
+// Loads Google's script and prepares the permission client ahead of the click,
+// because the permission pop-up must be opened straight from a tap.
+async function prepareDrive(){
+  if(drive.ready) return;
+  const cfg = await (await fetch("/api/config")).json();
+  await loadGsi();
+  drive.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cfg.googleClientId,
+    scope: DRIVE_SCOPE,
+    hint: currentUser && currentUser.email || undefined,
+    callback: (resp)=>{
+      const p = drive.pending; drive.pending = null;
+      if(!p) return;
+      if(resp.error || !resp.access_token){ p.reject(new Error(resp.error_description || resp.error || "Google didn't give permission")); return; }
+      if(!google.accounts.oauth2.hasGrantedAllScopes(resp, DRIVE_SCOPE)){ p.reject(new Error("Permission to save files wasn't ticked. Try again and keep the Drive box checked.")); return; }
+      drive.token = resp.access_token;
+      drive.exp = Date.now() + (Number(resp.expires_in) || 3000) * 1000;
+      p.resolve(drive.token);
+    },
+    error_callback: (err)=>{
+      const p = drive.pending; drive.pending = null;
+      if(!p) return;
+      const t = err && err.type;
+      p.reject(new Error(t === "popup_closed" ? "The Google window was closed before finishing."
+        : t === "popup_failed_to_open" ? "Couldn't open Google's permission window. Allow pop-ups for this site, or use Download PDF and save the file to Drive from there."
+        : "Couldn't get permission from Google."));
+    },
+  });
+  drive.ready = true;
+}
+// Must be called directly from a tap handler (no await before it).
+function requestDriveToken(){
+  if(drive.token && drive.exp > Date.now() + 60000) return Promise.resolve(drive.token);
+  return new Promise((resolve, reject)=>{
+    drive.pending = {resolve, reject};
+    drive.tokenClient.requestAccessToken();
+  });
+}
+
+async function driveFetch(url, token, opts){
+  const res = await fetch(url, Object.assign({}, opts, {headers: Object.assign({Authorization: "Bearer " + token}, opts && opts.headers)}));
+  if(res.status === 401){ drive.token = null; throw new Error("Google permission expired. Tap again to refresh it."); }
+  if(!res.ok){
+    let msg = "Google Drive said no (" + res.status + ")";
+    try{ const j = await res.json(); if(j && j.error && j.error.message) msg = j.error.message; }catch(e){}
+    if(res.status === 403 && /not been used|disabled|accessNotConfigured/i.test(msg)) msg = "The Google Drive API isn't switched on for this app's Google Cloud project yet (see the README, Step 8).";
+    throw new Error(msg);
+  }
+  return res.json();
+}
+const qEsc = (s)=> String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+
+async function uploadPdfToDrive(blob, name, token){
+  // 1. Folder "Ledger" (made by this app, so visible to it under the drive.file permission)
+  let found = await driveFetch("https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)&q=" +
+    encodeURIComponent("name = 'Ledger' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"), token);
+  let folderId = found.files && found.files[0] && found.files[0].id;
+  if(!folderId){
+    const made = await driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", token, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({name:"Ledger", mimeType:"application/vnd.google-apps.folder"}),
+    });
+    folderId = made.id;
+  }
+  // 2. Same name already there? Replace its contents so re-exporting never piles up duplicates.
+  const existing = await driveFetch("https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)&q=" +
+    encodeURIComponent(`name = '${qEsc(name)}' and '${folderId}' in parents and trashed = false`), token);
+  const oldId = existing.files && existing.files[0] && existing.files[0].id;
+  if(oldId){
+    return driveFetch("https://www.googleapis.com/upload/drive/v3/files/" + oldId + "?uploadType=media&fields=id,name,webViewLink", token, {
+      method:"PATCH", headers:{"Content-Type":"application/pdf"}, body: blob,
+    });
+  }
+  const boundary = "ledger" + uid();
+  const meta = JSON.stringify({name, parents:[folderId], mimeType:"application/pdf"});
+  const body = new Blob([
+    "--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n",
+    "--" + boundary + "\r\nContent-Type: application/pdf\r\n\r\n", blob, "\r\n--" + boundary + "--",
+  ]);
+  return driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", token, {
+    method:"POST", headers:{"Content-Type":"multipart/related; boundary=" + boundary}, body,
+  });
+}
+
+async function openExport(preset){
+  await loadAccounts();
+  const entries = await idbGetAll("entries");
+  const nowYear = new Date().getFullYear();
+  const years = entries.map(e=> parseInt(String(e.date).slice(0,4))).filter(y=> y > 1990 && y <= nowYear + 1);
+  const minYear = Math.min(nowYear, ...(years.length ? years : [nowYear]));
+  const startKey = (preset && preset.key) || monthKey(new Date());
+  const [sy, sm] = startKey.split("-").map(Number);
+  const yearOpts = []; for(let y = nowYear; y >= minYear; y--) yearOpts.push(y);
+  if(yearOpts.indexOf(sy) < 0) yearOpts.unshift(sy);
+  const monthNames = Array.from({length:12}, (_, i)=> new Date(2000, i, 1).toLocaleDateString(undefined, {month:"long"}));
+  const acctSel = (preset && preset.account) || (document.querySelector("#screen-budget.active") ? budgetScope : overviewAcct);
+  openModal(`
+    <h3>Export overview</h3>
+    <div class="field"><label>Period</label>
+      <select id="exPeriod"><option value="month" ${!(preset && preset.period === "year") ? "selected":""}>One month</option><option value="year" ${preset && preset.period === "year" ? "selected":""}>Whole year</option></select></div>
+    <div class="field" id="exMonthWrap"><label>Month</label>
+      <select id="exMonth">${monthNames.map((n,i)=> `<option value="${i+1}" ${i+1===sm?"selected":""}>${n}</option>`).join("")}</select></div>
+    <div class="field"><label>Year</label>
+      <select id="exYear">${yearOpts.map(y=> `<option value="${y}" ${y===sy?"selected":""}>${y}</option>`).join("")}</select></div>
+    <div class="field"><label>Account</label>
+      <select id="exAcct"><option value="all">🏦 All accounts</option>${ACCOUNTS.map(a=> `<option value="${a.id}" ${a.id===acctSel?"selected":""}>${a.type==="credit"?"💳":"🏦"} ${escapeHtml(a.name)}</option>`).join("")}</select></div>
+    <div class="ex-status" id="exStatus">Includes totals, your budget and what you saved, spending by category and the transactions.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="exClose">Close</button>
+      <button class="btn-primary" id="exDownload">Download PDF</button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn-primary" id="exDrive" disabled>Preparing Google Drive…</button>
+    </div>
+  `);
+  const $ = (id)=> document.getElementById(id);
+  const sync = ()=>{ $("exMonthWrap").style.display = $("exPeriod").value === "month" ? "" : "none"; };
+  $("exPeriod").addEventListener("change", sync); sync();
+  $("exClose").addEventListener("click", closeModal);
+  const status = (html, err)=>{ const el = $("exStatus"); if(!el) return; el.className = "ex-status" + (err ? " err" : ""); el.innerHTML = html; };
+
+  function params(){
+    const period = $("exPeriod").value, year = $("exYear").value, month = String($("exMonth").value).padStart(2, "0");
+    const account = $("exAcct").value;
+    const qs = new URLSearchParams({period, account});
+    if(period === "month") qs.set("month", year + "-" + month); else qs.set("year", year);
+    const scope = account === "all" ? "All accounts" : acctName(account);
+    const name = "Ledger " + (period === "month" ? year + "-" + month : year) + " - " + scope.replace(/[\\/:*?"<>|]+/g, " ").trim() + ".pdf";
+    return {qs: qs.toString(), name};
+  }
+
+  $("exDownload").addEventListener("click", async ()=>{
+    const {qs, name} = params();
+    status("Making your PDF…");
+    try{
+      const blob = await apiBlob("/api/report.pdf?" + qs);
+      await shareOrDownload(blob, name, "Ledger overview");
+      status("Done. " + escapeHtml(name));
+    }catch(e){ if(e.message !== "signed-out") status(escapeHtml(e.message), true); }
+  });
+
+  // Prepare the Google pop-up client in the background; enable the button when it's ready.
+  prepareDrive().then(()=>{
+    const b = $("exDrive"); if(!b) return;
+    b.disabled = false; b.textContent = "Save to Google Drive";
+  }).catch(()=>{
+    const b = $("exDrive"); if(!b) return;
+    b.textContent = "Google Drive unavailable (no connection)";
+  });
+  $("exDrive").addEventListener("click", ()=>{
+    if(!drive.ready) return;
+    const {qs, name} = params();
+    const btn = $("exDrive"); btn.disabled = true;
+    // Ask Google for permission first, straight from the tap, while the PDF is made in parallel.
+    const tokenP = requestDriveToken();
+    status("Waiting for Google…");
+    (async ()=>{
+      try{
+        const [token, blob] = await Promise.all([tokenP, apiBlob("/api/report.pdf?" + qs)]);
+        status("Saving to your Drive…");
+        const file = await uploadPdfToDrive(blob, name, token);
+        const link = file.webViewLink ? ` <a href="${escapeHtml(file.webViewLink)}" target="_blank" rel="noopener">Open in Drive</a>` : "";
+        status("Saved to Drive in the “Ledger” folder as " + escapeHtml(file.name || name) + "." + link);
+        toast("Saved to Google Drive", 2500);
+      }catch(e){
+        if(e.message !== "signed-out") status(escapeHtml(e.message), true);
+      }finally{
+        const b = $("exDrive"); if(b) b.disabled = false;
+      }
+    })();
+  });
+}
+
+/* ============================================================
+   RECURRING EXPENSES
+============================================================ */
+async function checkRecurring(){
+  const rules = await idbGetAll("recurring");
+  if(!rules.length) return;
+  const now = new Date();
+  const key = monthKey(now);
+  const entries = await idbGetAll("entries");
+  for(const rule of rules){
+    const already = entries.some(e=> e.recurringId === rule.id && e.date.slice(0,7)===key);
+    if(already) continue;
+    if(now.getDate() >= rule.day){
+      const dateObj = new Date(now.getFullYear(), now.getMonth(), Math.min(rule.day,28));
+      await idbPut("entries", {
+        id: uid(),
+        type: "expense",
+        amount: rule.amount,
+        category: rule.category,
+        date: dateObj.toISOString().slice(0,10),
+        note: rule.name,
+        createdAt: Date.now(),
+        recurringId: rule.id,
+        accountId: (rule.accountId && acctInfo(rule.accountId)) ? rule.accountId : ACCOUNTS[0].id,
+      });
+    }
+  }
+}
+
+async function openRecurringManager(){
+  const rules = await idbGetAll("recurring");
+  const catOptions = CATEGORIES.filter(c=>c.id!=="income").map(c=> `<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("");
+  const listHtml = rules.length ? rules.map(r=>{
+    const c = catInfo(r.category);
+    return `<div class="entry-row" data-recurring="${r.id}">
+      <div class="left"><div class="emoji">${c.emoji}</div><div class="meta"><div class="cat">${escapeHtml(r.name)}</div><div class="note">Day ${r.day} of month</div></div></div>
+      <div class="amt expense">${fmtMoney(r.amount)}</div>
+    </div>`;
+  }).join("") : `<div class="empty-state">No recurring items yet.</div>`;
+
+  openModal(`
+    <h3>Recurring expenses</h3>
+    <div style="max-height:180px; overflow-y:auto; margin-bottom:14px;">${listHtml}</div>
+    <div class="field"><label>Name</label><input id="recName" placeholder="Rent" /></div>
+    <div class="field"><label>Amount</label><input id="recAmount" class="mono" inputmode="decimal" placeholder="0.00" /></div>
+    <div class="field"><label>Category</label><select id="recCategory">${catOptions}</select></div>
+    <div class="field"><label>Account</label><select id="recAccount">${acctOptions(defaultAcctId())}</select></div>
+    <div class="field"><label>Day of month</label><input id="recDay" type="number" min="1" max="28" placeholder="1" /></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="recCancel">Close</button>
+      <button class="btn-primary" id="recAdd">Add</button>
+    </div>
+  `);
+  document.getElementById("recCancel").addEventListener("click", closeModal);
+  document.getElementById("recAdd").addEventListener("click", async ()=>{
+    const name = document.getElementById("recName").value.trim();
+    const amount = parseFloat(document.getElementById("recAmount").value);
+    const day = parseInt(document.getElementById("recDay").value);
+    const category = document.getElementById("recCategory").value;
+    if(!name || !amount || amount<=0 || !day || day<1 || day>28){ toast("Fill in all fields"); return; }
+    await idbPut("recurring", {id:uid(), name, amount, day, category, accountId: document.getElementById("recAccount").value});
+    await checkRecurring();
+    closeModal();
+    renderLastEntry();
+    toast("Recurring item added");
+  });
+  document.querySelectorAll("[data-recurring]").forEach(el=>{
+    el.addEventListener("click", async ()=>{
+      await idbDelete("recurring", el.dataset.recurring);
+      openRecurringManager();
+    });
+  });
+}
+document.getElementById("manageRecurring").addEventListener("click", openRecurringManager);
+
+/* ============================================================
+   SETTINGS — API key
+============================================================ */
+// These stay on this device only: your Gemini key, the read counter, and your last-used account.
+const LOCAL_KEYS = new Set(["apiKey", "requestLog", "lastAccountId"]);
+function localKey(k){ return "ledger." + (currentUser ? currentUser.id : "anon") + "." + k; }
+function getSetting(key){
+  if(LOCAL_KEYS.has(key)){
+    try{ const v = localStorage.getItem(localKey(key)); return Promise.resolve(v === null ? null : JSON.parse(v)); }
+    catch(e){ return Promise.resolve(null); }
+  }
+  return idbGet("settings", key).then(r=> r ? r.value : null);
+}
+function setSetting(key, value){
+  if(LOCAL_KEYS.has(key)){
+    try{ localStorage.setItem(localKey(key), JSON.stringify(value)); }catch(e){}
+    return Promise.resolve();
+  }
+  return idbPut("settings", {key, value});
+}
+
+async function openSettings(){
+  const apiKey = await getSetting("apiKey") || "";
+  let usage = {usedBytes: currentUser.usedBytes || 0, quotaBytes: currentUser.quotaBytes || 0};
+  try{ usage = await api("GET", "/api/me"); }catch(e){}
+  const mb = (n)=> (n / 1048576).toFixed(1);
+  openModal(`
+    <h3>Settings</h3>
+    <div class="field">
+      <label>Google Gemini API key</label>
+      <input id="apiKeyInput" class="mono" value="${escapeHtml(apiKey)}" placeholder="AIza..." autocomplete="off" />
+    </div>
+    <p style="font-size:12px; color:var(--muted); margin:0 0 6px;">
+      Free to get at aistudio.google.com — no card needed. Used only to read receipt photos, stored on this device only, sent directly to Google when you snap a receipt, never anywhere else. Reading is capped at ${RATE_LIMIT_PER_MINUTE}/min and ${RATE_LIMIT_PER_DAY}/day on-device to stay safely inside the free tier.
+    </p>
+    <div class="settings-sec">
+      <div class="k">Account</div>
+      <div style="font-size:14px; margin-bottom:2px;">${escapeHtml(currentUser.email || "")}</div>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Storage used: ${mb(usage.usedBytes)} of ${mb(usage.quotaBytes)} MB</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="pill-btn" id="setBackup">Download backup</button>
+        <button class="pill-btn" id="setImport">Import backup</button>
+        <button class="pill-btn" id="setSignOut">Sign out</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none;" />
+      <div style="margin-top:12px;"><button class="link-btn" id="setDelete" style="color:var(--red);">Delete my account and data</button></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="settingsClose">Close</button>
+      <button class="btn-primary" id="settingsSave">Save</button>
+    </div>
+  `);
+  document.getElementById("settingsClose").addEventListener("click", closeModal);
+  document.getElementById("setBackup").addEventListener("click", downloadBackup);
+  const importInput = document.getElementById("importFile");
+  document.getElementById("setImport").addEventListener("click", ()=> importInput.click());
+  importInput.addEventListener("change", async ()=>{
+    const f = importInput.files[0];
+    if(f) await importBackupFile(f);
+    importInput.value = "";
+  });
+  document.getElementById("setSignOut").addEventListener("click", signOut);
+  document.getElementById("setDelete").addEventListener("click", deleteAccountAndData);
+  document.getElementById("settingsSave").addEventListener("click", async ()=>{
+    await setSetting("apiKey", document.getElementById("apiKeyInput").value.trim());
+    closeModal();
+    toast("Settings saved");
+  });
+}
+document.getElementById("openSettings").addEventListener("click", ()=>{ closeSheet(); openSettings(); });
+
+/* ============================================================
+   HELPERS
+============================================================ */
+/* ============================================================
+   ACCOUNTS
+   Each account: {id, name, type:"bank"|"credit", opening, limit}
+   bank   -> balance = opening + income - expenses (+/- transfers)
+   credit -> owed    = opening - income(payments) + expenses; available = limit - owed
+   Transfers (e.g. paying off a card from your bank) move money between
+   accounts without counting as income or spending.
+============================================================ */
+let ACCOUNTS = [];
+let lastAcctId = null;
+
+async function loadAccounts(){
+  ACCOUNTS = (await idbGetAll("accounts")).sort((a,b)=> (a.createdAt||0)-(b.createdAt||0));
+}
+function acctInfo(id){ return ACCOUNTS.find(a=> a.id === id); }
+function acctName(id){ const a = acctInfo(id); return a ? a.name : "Unknown"; }
+function acctOptions(selectedId){
+  return ACCOUNTS.map(a=> `<option value="${a.id}" ${a.id===selectedId?"selected":""}>${a.type==="credit"?"💳":"🏦"} ${escapeHtml(a.name)}</option>`).join("");
+}
+function defaultAcctId(){
+  return (lastAcctId && acctInfo(lastAcctId)) ? lastAcctId : ACCOUNTS[0].id;
+}
+async function rememberAccount(id){
+  lastAcctId = id;
+  await setSetting("lastAccountId", id);
+}
+async function ensureAccounts(){
+  let list = await idbGetAll("accounts");
+  if(!list.length){
+    const main = {id:uid(), name:"Debit card", type:"bank", opening:0, limit:0, createdAt:Date.now(), autoCreated:true};
+    await idbPut("accounts", main);
+    list = [main];
+  }
+  list.sort((a,b)=> (a.createdAt||0)-(b.createdAt||0));
+  // Rename the auto-created default account (only if it still has the default name)
+  for(const a of list){ if(a.name === "Main account"){ a.name = "Debit card"; await idbPut("accounts", a); } }
+  const def = list[0].id;
+  // One-time migration: entries logged before accounts existed go to the first account
+  const entries = await idbGetAll("entries");
+  for(const e of entries){
+    if(e.type !== "transfer" && !e.accountId){ e.accountId = def; await idbPut("entries", e); }
+  }
+  lastAcctId = await getSetting("lastAccountId");
+  await loadAccounts();
+}
+
+function acctNet(a, entries){
+  let n = 0;
+  for(const e of entries){
+    if(e.type === "transfer"){
+      if(e.accountId === a.id) n -= e.amount;
+      if(e.toAccountId === a.id) n += e.amount;
+    } else if(e.accountId === a.id){
+      n += (e.type === "income" ? e.amount : -e.amount);
+    }
+  }
+  return n;
+}
+// value = signed contribution to combined total; main/sub = display text
+function acctFigures(a, entries){
+  const net = acctNet(a, entries);
+  if(a.type === "credit"){
+    const owed = (a.opening||0) - net;
+    const avail = (a.limit||0) - owed;
+    return { value: -owed, main: fmtSigned(avail), sub: `available of ${fmtMoney(a.limit||0)} limit`, neg: avail < 0 };
+  }
+  const bal = (a.opening||0) + net;
+  return { value: bal, main: fmtSigned(bal), sub: "balance", neg: bal < 0 };
+}
+function fmtSigned(n){ return (n<0?"-":"") + fmtMoney(Math.abs(n)); }
+
+function entryDisplay(e){
+  return e.type === "transfer" ? {emoji:"🔁", name:"Transfer"} : catInfo(e.category);
+}
+function entrySub(e){
+  if(e.type === "transfer") return acctName(e.accountId) + " → " + acctName(e.toAccountId);
+  const parts = [];
+  if(overviewAcct === "all" && e.accountId) parts.push(acctName(e.accountId));
+  if(e.note) parts.push(e.note);
+  return parts.join(" · ");
+}
+
+function renderAcctSwitch(entries){
+  const nameEl = document.getElementById("acctSwitchName");
+  const balEl = document.getElementById("acctSwitchBal");
+  const subEl = document.getElementById("acctSwitchSub");
+  if(overviewAcct === "all"){
+    const combined = ACCOUNTS.reduce((sum,a)=> sum + acctFigures(a, entries).value, 0);
+    nameEl.textContent = "All accounts";
+    balEl.textContent = fmtSigned(combined);
+    balEl.className = "bal mono" + (combined < 0 ? " neg" : "");
+    subEl.textContent = "combined overview";
+  } else {
+    const a = acctInfo(overviewAcct);
+    const f = acctFigures(a, entries);
+    nameEl.textContent = (a.type === "credit" ? "💳 " : "🏦 ") + a.name;
+    balEl.textContent = f.main;
+    balEl.className = "bal mono" + (f.neg ? " neg" : "");
+    subEl.textContent = f.sub;
+  }
+}
+function stepAccount(dir){
+  const order = ACCOUNTS.map(a=> a.id).concat("all"); // combined overview is always last
+  let i = order.indexOf(overviewAcct);
+  if(i < 0) i = order.length - 1;
+  overviewAcct = order[(i + dir + order.length) % order.length];
+  renderOverview();
+}
+document.getElementById("prevAcct").addEventListener("click", ()=> stepAccount(-1));
+document.getElementById("nextAcct").addEventListener("click", ()=> stepAccount(1));
+
+async function openAccountsManager(){
+  await loadAccounts();
+  const entries = await idbGetAll("entries");
+  const rows = ACCOUNTS.map(a=>{
+    const f = acctFigures(a, entries);
+    return `<div class="entry-row" data-acct-edit="${a.id}">
+      <div class="left"><div class="emoji">${a.type==="credit"?"💳":"🏦"}</div>
+      <div class="meta"><div class="cat">${escapeHtml(a.name)}</div><div class="note">${f.sub}</div></div></div>
+      <div class="amt ${f.neg?"expense":""}">${f.main}</div></div>`;
+  }).join("");
+  openModal(`
+    <h3>Accounts</h3>
+    <div style="max-height:260px; overflow-y:auto; margin-bottom:8px;">${rows}</div>
+    <div class="hint" style="margin-top:6px;">Tap an account to edit it.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="acctClose">Close</button>
+      <button class="btn-ghost" id="acctTransfer">Transfer</button>
+      <button class="btn-primary" id="acctAdd">Add account</button>
+    </div>
+  `);
+  document.getElementById("acctClose").addEventListener("click", closeModal);
+  document.getElementById("acctAdd").addEventListener("click", ()=> openAccountForm(null));
+  document.getElementById("acctTransfer").addEventListener("click", ()=> openTransferForm());
+  modalBody.querySelectorAll("[data-acct-edit]").forEach(el=>{
+    el.addEventListener("click", ()=> openAccountForm(el.dataset.acctEdit));
+  });
+}
+
+function openAccountForm(id){
+  const a = id ? acctInfo(id) : {name:"", type:"bank", opening:"", limit:""};
+  openModal(`
+    <h3>${id ? "Edit account" : "New account"}</h3>
+    <div class="field"><label>Name</label><input id="afName" value="${escapeHtml(a.name)}" placeholder="e.g. ABN AMRO" /></div>
+    <div class="field"><label>Type</label>
+      <select id="afType">
+        <option value="bank" ${a.type==="bank"?"selected":""}>🏦 Debit card</option>
+        <option value="credit" ${a.type==="credit"?"selected":""}>💳 Credit card</option>
+      </select></div>
+    <div class="field" id="afLimitWrap"><label>Credit limit ($)</label><input id="afLimit" class="mono" inputmode="decimal" value="${a.limit||""}" placeholder="0.00" /></div>
+    <div class="field"><label id="afOpeningLabel">Starting balance ($)</label><input id="afOpening" class="mono" value="${a.opening||""}" placeholder="0.00" /></div>
+    <div class="hint" id="afHint"></div>
+    <div class="modal-actions">
+      ${id ? `<button class="btn-danger" id="afDelete">Delete</button>` : ""}
+      <button class="btn-ghost" id="afCancel">Back</button>
+      <button class="btn-primary" id="afSave">Save</button>
+    </div>
+  `);
+  const typeSel = document.getElementById("afType");
+  function sync(){
+    const credit = typeSel.value === "credit";
+    document.getElementById("afLimitWrap").style.display = credit ? "" : "none";
+    document.getElementById("afOpeningLabel").textContent = credit ? "Currently owed ($)" : "Starting balance ($)";
+    document.getElementById("afHint").textContent = credit
+      ? "What you owe on the card today (0 if nothing). Spending adds to it, payments reduce it."
+      : "What's in the account before the entries you log here. Income adds to it, expenses take from it.";
+  }
+  typeSel.addEventListener("change", sync);
+  sync();
+  document.getElementById("afCancel").addEventListener("click", openAccountsManager);
+  document.getElementById("afSave").addEventListener("click", async ()=>{
+    const name = document.getElementById("afName").value.trim();
+    const type = typeSel.value;
+    const opening = parseFloat(document.getElementById("afOpening").value.replace(",", ".")) || 0;
+    const limit = parseFloat(document.getElementById("afLimit").value.replace(",", ".")) || 0;
+    if(!name){ toast("Give the account a name"); return; }
+    if(type === "credit" && limit <= 0){ toast("Enter a credit limit"); return; }
+    await idbPut("accounts", {
+      id: id || uid(), name, type, opening,
+      limit: type === "credit" ? limit : 0,
+      createdAt: id ? a.createdAt : Date.now(),
+    });
+    await loadAccounts();
+    toast(id ? "Account updated" : "Account added");
+    renderOverview(); renderLastEntry();
+    openAccountsManager();
+  });
+  const del = document.getElementById("afDelete");
+  if(del) del.addEventListener("click", async ()=>{
+    const entries = await idbGetAll("entries");
+    const used = entries.filter(e=> e.accountId === id || e.toAccountId === id).length;
+    if(ACCOUNTS.length <= 1){ toast("You need at least one account"); return; }
+    if(used){ toast(`Has ${used} entries — can't delete`); return; }
+    await idbDelete("accounts", id);
+    for(const pl of await idbGetAll("plans")){ if(pl.accountId === id) await idbDelete("plans", pl.id); }
+    if(lastAcctId === id) lastAcctId = null;
+    await loadAccounts();
+    toast("Account deleted");
+    renderOverview();
+    openAccountsManager();
+  });
+}
+
+function openTransferForm(){
+  if(ACCOUNTS.length < 2){ toast("Add a second account first"); return; }
+  const from = defaultAcctId();
+  const to = (ACCOUNTS.find(a=> a.id !== from) || ACCOUNTS[0]).id;
+  openModal(`
+    <h3>Transfer</h3>
+    <div class="field"><label>From</label><select id="tfFrom">${acctOptions(from)}</select></div>
+    <div class="field"><label>To</label><select id="tfTo">${acctOptions(to)}</select></div>
+    <div class="field"><label>Amount</label><input id="tfAmount" class="mono" inputmode="decimal" placeholder="0.00" /></div>
+    <div class="field"><label>Date</label><input id="tfDate" type="date" value="${todayISO()}" /></div>
+    <div class="hint">Use this to pay off a credit card or move money between accounts. It doesn't count as spending or income.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="tfCancel">Back</button>
+      <button class="btn-primary" id="tfSave">Transfer</button>
+    </div>
+  `);
+  document.getElementById("tfCancel").addEventListener("click", openAccountsManager);
+  document.getElementById("tfSave").addEventListener("click", async ()=>{
+    const f = document.getElementById("tfFrom").value, t = document.getElementById("tfTo").value;
+    const amount = parseFloat(document.getElementById("tfAmount").value.replace(",", "."));
+    if(f === t){ toast("Pick two different accounts"); return; }
+    if(!amount || amount <= 0){ toast("Enter a valid amount"); return; }
+    await idbPut("entries", {
+      id: uid(), type: "transfer", amount, category: "transfer",
+      accountId: f, toAccountId: t,
+      date: document.getElementById("tfDate").value || todayISO(),
+      note: "", createdAt: Date.now(),
+    });
+    closeModal(); toast("Transferred");
+    renderOverview(); renderLastEntry();
+  });
+}
+
+function openEditTransfer(e){
+  openModal(`
+    <h3>Edit transfer</h3>
+    <div class="field"><label>From</label><select id="etFrom">${acctOptions(e.accountId)}</select></div>
+    <div class="field"><label>To</label><select id="etTo">${acctOptions(e.toAccountId)}</select></div>
+    <div class="field"><label>Amount</label><input id="etAmount" class="mono" inputmode="decimal" value="${e.amount}" /></div>
+    <div class="field"><label>Date</label><input id="etDate" type="date" value="${e.date}" /></div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="etDelete">Delete</button>
+      <button class="btn-primary" id="etSave">Save</button>
+    </div>
+  `);
+  document.getElementById("etDelete").addEventListener("click", async ()=>{
+    await idbDelete("entries", e.id); closeModal(); renderOverview(); renderLastEntry(); toast("Deleted");
+  });
+  document.getElementById("etSave").addEventListener("click", async ()=>{
+    const f = document.getElementById("etFrom").value, t = document.getElementById("etTo").value;
+    const amount = parseFloat(document.getElementById("etAmount").value.replace(",", "."));
+    if(f === t){ toast("Pick two different accounts"); return; }
+    if(!amount || amount <= 0){ toast("Enter a valid amount"); return; }
+    e.accountId = f; e.toAccountId = t; e.amount = amount;
+    e.date = document.getElementById("etDate").value || e.date;
+    await idbPut("entries", e); closeModal(); renderOverview(); renderLastEntry(); toast("Updated");
+  });
+}
+
+document.getElementById("manageAccounts").addEventListener("click", openAccountsManager);
+document.getElementById("openAccountsMenu").addEventListener("click", ()=>{ closeSheet(); openAccountsManager(); });
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){ return "$" + Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDateLong(iso){
+  return new Date(iso+"T00:00:00").toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"});
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m=> ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+/* ============================================================
+   CLOUD ACCOUNT — Google sign-in, backup, import
+============================================================ */
+// "redirect" is what works inside an installed iPhone app. Open the site with ?login=popup to try the popup style instead.
+const LOGIN_MODE = new URLSearchParams(location.search).get("login") === "popup" ? "popup" : "redirect";
+const LOGIN_ERRORS = {
+  csrf: "Sign-in was blocked by a security check. Please try again.",
+  not_allowed: "This Google account hasn't been invited yet. Ask the owner to add your email.",
+  invalid: "Google sign-in couldn't be verified. Please try again.",
+};
+let gsiPromise = null;
+let gsiRendered = false;
+
+function loadGsi(){
+  if(!gsiPromise){
+    gsiPromise = new Promise((resolve, reject)=>{
+      const sc = document.createElement("script");
+      sc.src = "https://accounts.google.com/gsi/client";
+      sc.async = true;
+      sc.onload = resolve;
+      sc.onerror = ()=>{ gsiPromise = null; reject(new Error("gsi")); };
+      document.head.appendChild(sc);
+    });
+  }
+  return gsiPromise;
+}
+
+function showLogin(message){
+  document.getElementById("loginScreen").classList.add("active");
+  document.getElementById("loginStatus").textContent = "Sign in to continue";
+  document.getElementById("loginRetry").style.display = "none";
+  const errEl = document.getElementById("loginErr");
+  errEl.textContent = message || "";
+  if(gsiRendered) return;
+  gsiRendered = true;
+  (async ()=>{
+    try{
+      const cfg = await (await fetch("/api/config")).json();
+      await loadGsi();
+      const opts = { client_id: cfg.googleClientId };
+      if(LOGIN_MODE === "redirect"){
+        opts.ux_mode = "redirect";
+        opts.login_uri = location.origin + "/auth/google/callback";
+      } else {
+        opts.callback = async (resp)=>{
+          try{
+            const r = await fetch("/api/auth/google", {
+              method: "POST", credentials: "same-origin",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify({credential: resp.credential}),
+            });
+            if(r.ok){ location.reload(); return; }
+            const j = await r.json().catch(()=> ({}));
+            errEl.textContent = j.error || "Sign-in failed.";
+          }catch(e){ errEl.textContent = "Couldn't reach the server."; }
+        };
+      }
+      google.accounts.id.initialize(opts);
+      google.accounts.id.renderButton(document.getElementById("googleBtn"), {theme:"filled_black", size:"large", text:"continue_with", shape:"pill", width:260});
+    }catch(e){
+      gsiRendered = false;
+      errEl.textContent = "Couldn't load Google sign-in. Check your connection and reload.";
+    }
+  })();
+}
+
+async function signOut(){
+  try{ await api("POST", "/api/auth/logout", {}); }catch(e){}
+  location.reload();
+}
+
+async function deleteAccountAndData(){
+  const typed = prompt("This permanently deletes your account and ALL your data (entries, receipts, budgets).\n\nType DELETE to confirm.");
+  if(typed !== "DELETE") return;
+  await api("DELETE", "/api/me");
+  try{ Object.keys(localStorage).filter(k=> k.indexOf("ledger.") === 0).forEach(k=> localStorage.removeItem(k)); }catch(e){}
+  location.reload();
+}
+
+// Saves a backup file: the share sheet on phones (Save to Files / AirDrop), a normal download elsewhere.
+async function saveBackupFile(obj){
+  const name = "ledger-backup-" + todayISO() + ".json";
+  await shareOrDownload(new Blob([JSON.stringify(obj)], {type:"application/json"}), name, "Ledger backup");
+}
+async function shareOrDownload(blob, name, title){
+  try{
+    const file = new File([blob], name, {type: blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title});
+      return;
+    }
+  }catch(e){ if(e && e.name === "AbortError") return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 5000);
+}
+
+async function downloadBackup(){
+  toast("Preparing backup…", 60000);
+  const data = await api("GET", "/api/export");
+  toast("Backup ready", 2000);
+  await saveBackupFile(data);
+}
+
+// Makes sure an old receipt photo is something the server accepts (JPEG/PNG/WebP/GIF, and not huge).
+async function normalizeReceipt(item){
+  let u = item.imageDataUrl;
+  if(!/^data:image\/(jpeg|png|webp|gif);base64,/.test(u)){
+    u = await shrinkDataUrl(u, 1400, 0.68, true);        // re-encode as JPEG
+    if(!u){ const c = Object.assign({}, item); delete c.imageDataUrl; return c; } // undecodable: keep the record, drop the photo
+  }
+  if(u.length > 450000) u = await shrinkDataUrl(u);
+  return Object.assign({}, item, {imageDataUrl: u});
+}
+
+async function importBackupFile(file){
+  let json;
+  try{ json = JSON.parse(await file.text()); }catch(e){ toast("That file isn't a valid backup", 3500); return; }
+  const stores = json && json.stores;
+  if(!stores || typeof stores !== "object" || Array.isArray(stores)){ toast("That isn't a Ledger backup file", 3500); return; }
+
+  const ORDER = ["accounts","entries","budgets","plans","recurring","settings","receipts"];
+  const batches = [];
+  let cur = {}, curSize = 0, total = 0;
+  for(const name of ORDER){
+    const list = Array.isArray(stores[name]) ? stores[name] : [];
+    for(let item of list){
+      if(name === "receipts" && item && typeof item.imageDataUrl === "string"){
+        item = await normalizeReceipt(item);
+      }
+      const size = JSON.stringify(item).length;
+      if(curSize > 0 && curSize + size > 4000000){ batches.push(cur); cur = {}; curSize = 0; }
+      (cur[name] = cur[name] || []).push(item);
+      curSize += size;
+      total++;
+    }
+  }
+  if(curSize > 0) batches.push(cur);
+  if(!total){ toast("Nothing to import in that file", 3500); return; }
+
+  try{
+    for(let i = 0; i < batches.length; i++){
+      toast("Importing… " + (i + 1) + "/" + batches.length, 60000);
+      await api("POST", "/api/import", {stores: batches[i]});
+    }
+  }catch(e){
+    resetCache();
+    toast("Import stopped: " + (e.message || "error") + " You can run it again; nothing is duplicated.", 6000);
+    return;
+  }
+
+  resetCache();
+  await loadCategories();
+  renderCatGrid();
+  await loadAccounts();
+  // Drop the empty default account created at first sign-in if real accounts came in with the backup.
+  const entries = await idbGetAll("entries");
+  for(const a of ACCOUNTS.slice()){
+    const used = entries.some(e=> e.accountId === a.id || e.toAccountId === a.id);
+    if(a.autoCreated && !used && ACCOUNTS.length > 1){
+      await idbDelete("accounts", a.id);
+      ACCOUNTS = ACCOUNTS.filter(x=> x.id !== a.id);
+    }
+  }
+  lastAcctId = null;
+  overviewAcct = "all";
+  await ensureAccounts();
+  await renderLastEntry();
+  closeModal();
+  toast("Imported " + total + " items", 3000);
+}
+
+// A failed save must never look like a successful one.
+window.addEventListener("unhandledrejection", (ev)=>{
+  const r = ev.reason;
+  if(r && r.message === "signed-out") return;
+  toast(r && r.status ? r.message : "Couldn't reach the server. Your last change may not be saved.", 4500);
+});
+
+// Pick up changes made on another device when the app returns to the foreground.
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden || !currentUser) return;
+  resetCache();
+  const active = document.querySelector(".screen.active");
+  const id = active && active.id;
+  let p = null;
+  if(id === "screen-home") p = renderLastEntry();
+  else if(id === "screen-overview") p = renderOverview();
+  else if(id === "screen-budget") p = renderBudget();
+  else if(id === "screen-receipts") p = renderReceipts();
+  if(p && p.catch) p.catch(()=>{});
+});
+
+/* ============================================================
+   BOOT
+============================================================ */
+async function boot(){
+  const statusEl = document.getElementById("loginStatus");
+  const retryEl = document.getElementById("loginRetry");
+  retryEl.style.display = "none";
+  statusEl.textContent = "Loading…";
+
+  // Show a message if Google sent the person back with an error.
+  const params = new URLSearchParams(location.search);
+  const loginError = LOGIN_ERRORS[params.get("login_error")] || "";
+  if(params.has("login_error")) history.replaceState(null, "", location.pathname);
+
+  // The free server sleeps when idle, so the first request can take about a minute.
+  const slow = setTimeout(()=>{ statusEl.textContent = "Waking up the server… this can take up to a minute."; }, 3500);
+  let me;
+  try{
+    const res = await fetch("/api/me", {credentials:"same-origin"});
+    clearTimeout(slow);
+    if(res.status === 401){ showLogin(loginError); return; }
+    if(res.status === 403){ showLogin(LOGIN_ERRORS.not_allowed); return; }
+    if(!res.ok) throw new Error("bad status");
+    me = await res.json();
+  }catch(e){
+    clearTimeout(slow);
+    statusEl.textContent = "Couldn't reach the server. Check your connection and try again.";
+    retryEl.style.display = "";
+    retryEl.onclick = boot;
+    return;
+  }
+  currentUser = Object.assign({}, me.user, {usedBytes: me.usedBytes, quotaBytes: me.quotaBytes});
+
+  await loadCategories();
+  renderCatGrid();
+  await ensureAccounts();
+  await checkRecurring();
+  await renderLastEntry();
+  document.getElementById("loginScreen").classList.remove("active");
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+}
+boot();
+
+})();
+</script>
+</body>
+</html>

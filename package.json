@@ -1,0 +1,25 @@
+{
+  "name": "ledger-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ledger: personal expense tracker with Google login and cloud sync",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "MEMORY_STORE=1 node server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "google-auth-library": "^9.15.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.12.0",
+    "pdfkit": "^0.15.2"
+  }
+}
