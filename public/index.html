@@ -1450,7 +1450,8 @@ async function openEditEntry(id){
     `<option value="${c.id}" ${c.id===e.category?"selected":""}>${c.emoji} ${c.name}</option>`
   ).join("");
   openModal(`
-    <h3>Edit entry</h3>
+ <h3>Edit entry</h3>
+    <div class="field"><label>Type</label><select id="editType"><option value="expense" ${e.type==="expense"?"selected":""}>Expense</option><option value="income" ${e.type==="income"?"selected":""}>Income</option></select></div>
     <div class="field"><label>Amount</label><input id="editAmount" class="mono" inputmode="decimal" value="${e.amount}" /></div>
     <div class="field"><label>Category</label><select id="editCategory">${catOptions}</select></div>
     <div class="field"><label>Account</label><select id="editAccount">${acctOptions(e.accountId)}</select></div>
@@ -1461,6 +1462,18 @@ async function openEditEntry(id){
       <button class="btn-primary" id="editSave">Save</button>
     </div>
   `);
+    document.getElementById("editType").addEventListener("change", ()=>{
+    const t = document.getElementById("editType").value;
+    const c = document.getElementById("editCategory");
+    if(t === "income") c.value = "income";
+    else if(c.value === "income") c.value = "other";
+  });
+    document.getElementById("editType").addEventListener("change", ()=>{
+    const t = document.getElementById("editType").value;
+    const c = document.getElementById("editCategory");
+    if(t === "income") c.value = "income";
+    else if(c.value === "income") c.value = "other";
+  });
   document.getElementById("editDelete").addEventListener("click", async ()=>{
     await idbDelete("entries", id);
     closeModal();
@@ -1472,6 +1485,7 @@ async function openEditEntry(id){
     if(!amount || amount<=0){ toast("Enter a valid amount"); return; }
     e.amount = amount;
     e.category = document.getElementById("editCategory").value;
+    e.type = document.getElementById("editType").value;
     e.accountId = document.getElementById("editAccount").value;
     e.date = document.getElementById("editDate").value;
     e.note = document.getElementById("editNote").value;
@@ -1752,6 +1766,10 @@ async function openPlanEditor(key, scope, focusCat){
     <h3>${escapeHtml(keyLabel(key))} budget</h3>
     <div class="hint" style="margin-top:-8px;">${escapeHtml(scopeName)}${existing ? "" : prev ? " · started from " + escapeHtml(keyLabel(prev.month)) : ""}. Leave a category empty for no limit.</div>
     <div style="max-height:50vh; max-height:50dvh; overflow-y:auto; padding-right:2px;">${lines}</div>
+    <div style="display:flex; gap:16px; margin:8px 0 0;">
+      <button class="link-btn" id="planNewCat">＋ New category</button>
+      ${CUSTOM_CATEGORIES.length ? `<button class="link-btn" id="planEditCats">Edit / delete custom</button>` : ""}
+    </div>
     <div class="plan-total"><span>Total budget</span><span class="mono" id="planTotal">$0.00</span></div>
     <div class="modal-actions">
       ${existing ? `<button class="btn-danger" id="planRemove">Remove</button>` : ""}
@@ -1766,6 +1784,9 @@ async function openPlanEditor(key, scope, focusCat){
   upd();
   if(focusCat){ const t = inputs.find(el=> el.dataset.cat === focusCat); if(t){ t.focus(); t.select(); } }
   document.getElementById("planCancel").addEventListener("click", closeModal);
+  document.getElementById("planNewCat").addEventListener("click", ()=> openCategoryForm(null));
+  const pec = document.getElementById("planEditCats");
+  if(pec) pec.addEventListener("click", openCategoryManager);
   const rm = document.getElementById("planRemove");
   if(rm) rm.addEventListener("click", async ()=>{
     await idbDelete("plans", planIdOf(key, scope));
